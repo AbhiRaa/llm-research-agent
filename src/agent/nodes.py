@@ -109,18 +109,18 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     tmpl = ChatPromptTemplate.from_messages(
         [
-            ("system",
-             "You are an evidence checker.\n"
-             "Step 1 – list the REQUIRED slots (facts) the answer must contain.\n"
-             "Step 2 – read the docs and list which slots are already filled.\n"
-             "Step 3 – output STRICT JSON:\n"
-             "{{}"
-             '"slots": <list>, "filled": <list>, '
-             '"need_more": <bool>, "new_queries": <list>'
-             "}}\n"
-             "Rules: need_more is true iff some slot missing OR conflicting docs. "
-             "Return at most 3 new_queries."),
-            ("user", "Question: {q}\nDocs:\n{ctx}")
+            (
+                "system",
+                "You are an evidence checker.\n"
+                "Step 1 – list the REQUIRED slots (facts) the answer must contain.\n"
+                "Step 2 – read the docs and list which slots are already filled.\n"
+                "Step 3 – output STRICT JSON exactly like:\n"
+                '{{"slots": <list>, "filled": <list>, '
+                '"need_more": <bool>, "new_queries": <list>}}\n'
+                "Rules: need_more is true iff some slot missing OR conflicting docs. "
+                "Return at most 3 new_queries.",
+            ),
+            ("user", "Question: {q}\nDocs:\n{ctx}"),
         ]
     )
     raw = await call_llm(tmpl, q=state["question"], ctx=ctx[:4000])

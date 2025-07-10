@@ -2,9 +2,7 @@
 services:
   agent:
     build: .
-    environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      BING_API_KEY:   ${BING_API_KEY:-}
+    env_file:
+      - .env
     # Example command – overridden by `docker compose run`
     command: ["Who won the 2022 FIFA World Cup?"]

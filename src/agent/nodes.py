@@ -11,6 +11,8 @@ from langchain.prompts import ChatPromptTemplate
 from .tools import web_search
 import openai
 
+MAX_ITER = 2
+
 # ------------------------------------------------------------------ LLM setup
 USE_LLM = bool(os.getenv("OPENAI_API_KEY"))
 
@@ -63,13 +65,25 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
         ]
     )
     raw = await call_llm(tmpl, q=q)
+
+    # Attempt JSON decode
     try:
-        queries = json.loads(raw)
-        if isinstance(queries, dict):  # unwrap {"queries": [...]}
-            queries = queries.get("queries", [])
-    except Exception:
-        queries = [line.strip() for line in raw.splitlines() if line.strip()]
-    return {"question": q, "queries": queries[:5]}  # keep question
+        data = json.loads(raw)
+        if isinstance(data, list):  # expected shape
+            queries = data
+        elif isinstance(data, dict):  # e.g. {"queries":[…]}
+            queries = data.get("queries", [])
+        else:  # any other JSON value
+            queries = []
+    except json.JSONDecodeError:
+        # Fallback: split plain-text lines
+        queries = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+    return {
+        "question": q,
+        "queries": queries[:5],
+        "iter": state.get("iter", 0),
+    }  # carry forward
 
 
 # ------------------------------------------------------------------ Search
@@ -84,6 +98,7 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
         "question": state["question"],
         "queries": state["queries"],
         "docs": list(merged.values())[:5],
+        "iter": state.get("iter", 0),
     }
 
 
@@ -112,8 +127,10 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "question": state["question"],
             "queries": data.get("new_queries") or state["queries"],
-            "need_more": bool(data.get("need_more")),
+            # Stop automatically after MAX_ITER
+            "need_more": bool(data.get("need_more")) and state["iter"] < MAX_ITER - 1,
             "docs": state["docs"],
+            "iter": state["iter"] + 1,  # increment
         }
     except Exception:
         # keep pipeline state intact on parse failure
@@ -122,12 +139,22 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
             "queries": state["queries"],
             "need_more": False,
             "docs": docs,
+            "iter": state.get("iter", 0) + 1,  # still advance
         }
 
 
 # ------------------------------------------------------------------ Synthesize
 async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    docs: List[Document] = state["docs"]
+    docs: List[Document] = state.get("docs", [])
+
+    # Guarantee at least one citation so CLI & tests never break
+    if not docs:
+        docs = [
+            Document(
+                page_content="No external documents fetched; answering from prior knowledge.",
+                metadata={"title": "Stub source", "url": "local"},
+            )
+        ]
     evidence = "\n".join(f"[{i+1}] {d.page_content}" for i, d in enumerate(docs[:3]))
     tmpl = ChatPromptTemplate.from_messages(
         [

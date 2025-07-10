@@ -109,28 +109,33 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     tmpl = ChatPromptTemplate.from_messages(
         [
-            ("system", "Decide if the docs fully answer the question."),
-            (
-                "user",
-                (
-                    "Reply with JSON {{"
-                    '"need_more":bool,'
-                    '"new_queries":list'
-                    "}}.\nQuestion:{q}\nDocs:\n{ctx}"
-                ),
-            ),
+            ("system",
+             "You are an evidence checker.\n"
+             "Step 1 – list the REQUIRED slots (facts) the answer must contain.\n"
+             "Step 2 – read the docs and list which slots are already filled.\n"
+             "Step 3 – output STRICT JSON:\n"
+             "{{}"
+             '"slots": <list>, "filled": <list>, '
+             '"need_more": <bool>, "new_queries": <list>'
+             "}}\n"
+             "Rules: need_more is true iff some slot missing OR conflicting docs. "
+             "Return at most 3 new_queries."),
+            ("user", "Question: {q}\nDocs:\n{ctx}")
         ]
     )
     raw = await call_llm(tmpl, q=state["question"], ctx=ctx[:4000])
     try:
         data = json.loads(raw)
+        need_more = bool(data.get("need_more"))
+        if state["iter"] >= MAX_ITER - 1:
+            need_more = False
         return {
-            "question": state["question"],
+            **state,
+            "slots": data.get("slots", []),
+            "filled": data.get("filled", []),
+            "need_more": need_more,
             "queries": data.get("new_queries") or state["queries"],
-            # Stop automatically after MAX_ITER
-            "need_more": bool(data.get("need_more")) and state["iter"] < MAX_ITER - 1,
-            "docs": state["docs"],
-            "iter": state["iter"] + 1,  # increment
+            "iter": state["iter"] + 1,
         }
     except Exception:
         # keep pipeline state intact on parse failure
@@ -165,7 +170,7 @@ async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
     answer_raw = await call_llm(tmpl, q=state["question"], e=evidence)
     # remove any role prefixes the model may add
     answer = answer_raw.lstrip().removeprefix("Human:").removeprefix("Assistant:")
-    
+
     citations = [
         {"id": i + 1, "title": d.metadata.get("title"), "url": d.metadata["url"]}
         for i, d in enumerate(docs[:3])

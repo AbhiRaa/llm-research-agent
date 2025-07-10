@@ -3,6 +3,7 @@ Async node functions for the LangGraph pipeline.
 They fall back to deterministic stubs when OPENAI_API_KEY is absent,
 so unit-tests and CI run fully offline.
 """
+
 import json, asyncio, os
 from typing import Dict, Any, List
 from langchain.schema import Document
@@ -19,15 +20,18 @@ if USE_LLM:
 
     async def call_llm(prompt: ChatPromptTemplate, **kwargs) -> str:
         return await llm.apredict(prompt.format(**kwargs))
+
 else:
+
     async def call_llm(prompt: ChatPromptTemplate, **kwargs) -> str:  # type: ignore
-        """Offline stub that returns trivial JSON or echo text."""
-        body = prompt.messages[1][1]
-        if "Break the question" in body:
-            return json.dumps([kwargs["q"]])
-        if "Decide if the docs" in body:
+        """Offline stub: generate deterministic JSON/text based on kwargs."""
+        if "ctx" in kwargs:  # Reflect node
             return json.dumps({"need_more": False, "new_queries": []})
-        return f"Stub answer for: {kwargs['q']} [1]"
+        if "e" in kwargs:  # Synthesize node
+            return f"Stub answer for: {kwargs['q']} [1]"
+        # Default: GenerateQueries node
+        return json.dumps([kwargs["q"]])
+
 
 # ------------------------------------------------------------------ Generate
 async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -35,7 +39,10 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     tmpl = ChatPromptTemplate.from_messages(
         [
             ("system", "You are a helpful research assistant."),
-            ("user", "Break the question into 3-5 web search queries as a JSON list.\n{q}"),
+            (
+                "user",
+                "Break the question into 3-5 web search queries as a JSON list.\n{q}",
+            ),
         ]
     )
     raw = await call_llm(tmpl, q=q)
@@ -43,7 +50,8 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
         queries = json.loads(raw)
     except Exception:
         queries = [line.strip() for line in raw.splitlines() if line.strip()]
-    return {"queries": queries[:5]}
+    return {"question": q, "queries": queries[:5]}  # keep question
+
 
 # ------------------------------------------------------------------ Search
 async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -53,7 +61,12 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
     for lst in docs_lists:
         for d in lst:
             merged[d.metadata["url"]] = d
-    return {"docs": list(merged.values())[:5]}
+    return {
+        "question": state["question"],
+        "queries": state["queries"],
+        "docs": list(merged.values())[:5],
+    }
+
 
 # ------------------------------------------------------------------ Reflect
 async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -62,18 +75,24 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
     tmpl = ChatPromptTemplate.from_messages(
         [
             ("system", "Decide if the docs fully answer the question."),
-            ("user", "Reply with JSON {\"need_more\":bool,\"new_queries\":list}.\nQuestion:{q}\nDocs:\n{ctx}"),
+            (
+                "user",
+                'Reply with JSON {"need_more":bool,"new_queries":list}.\nQuestion:{q}\nDocs:\n{ctx}',
+            ),
         ]
     )
     raw = await call_llm(tmpl, q=state["question"], ctx=ctx[:4000])
     try:
         data = json.loads(raw)
         return {
-            "need_more": bool(data.get("need_more")),
+            "question": state["question"],
             "queries": data.get("new_queries") or state["queries"],
+            "need_more": bool(data.get("need_more")),
+            "docs": state["docs"],
         }
     except Exception:
         return {"need_more": False}
+
 
 # ------------------------------------------------------------------ Synthesize
 async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:

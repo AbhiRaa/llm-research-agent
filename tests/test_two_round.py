@@ -23,9 +23,12 @@ class ToggleReflect:
 
 def test_two_round(monkeypatch):
     toggle = ToggleReflect()
-    monkeypatch.setattr(nodes, "reflect_node", toggle)
 
-    # ---- NEW: recompile the graph so it uses the patched node ----
+    # Patch BOTH locations
+    monkeypatch.setattr(nodes, "reflect_node", toggle)
+    monkeypatch.setattr(g, "reflect_node", toggle)
+
+    # Re-compile so builder picks up the patched function
     g._GRAPH = g._build_graph()
 
     out = answer_sync("Two-round test?")

@@ -9,28 +9,45 @@ from typing import Dict, Any, List
 from langchain.schema import Document
 from langchain.prompts import ChatPromptTemplate
 from .tools import web_search
+import openai
 
 # ------------------------------------------------------------------ LLM setup
 USE_LLM = bool(os.getenv("OPENAI_API_KEY"))
 
+
+# Offline-stub helper reused in both modes
+async def _offline_stub(prompt: ChatPromptTemplate, **kwargs) -> str:
+    """Generate deterministic JSON/text for unit tests & fallback."""
+    if "ctx" in kwargs:  # Reflect node
+        return json.dumps({"need_more": False, "new_queries": []})
+    if "e" in kwargs:  # Synthesize node
+        return f"Stub answer for: {kwargs['q']} [1]"
+    return json.dumps([kwargs["q"]])  # GenerateQueries node
+
+
 if USE_LLM:
     from langchain_openai import ChatOpenAI
 
-    llm = ChatOpenAI(temperature=0)
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 
     async def call_llm(prompt: ChatPromptTemplate, **kwargs) -> str:
-        return await llm.apredict(prompt.format(**kwargs))
+        try:
+            # new, non-deprecated async invoke
+            msg = await llm.ainvoke(prompt.format(**kwargs))
+            return msg.content  # ← extract text
+
+        # graceful fallback on quota/auth/rate-limit issues
+        except (
+            openai.RateLimitError,
+            openai.AuthenticationError,
+            openai.APIError,
+        ):
+            return await _offline_stub(prompt, **kwargs)
 
 else:
-
+    # No API key – always use stub
     async def call_llm(prompt: ChatPromptTemplate, **kwargs) -> str:  # type: ignore
-        """Offline stub: generate deterministic JSON/text based on kwargs."""
-        if "ctx" in kwargs:  # Reflect node
-            return json.dumps({"need_more": False, "new_queries": []})
-        if "e" in kwargs:  # Synthesize node
-            return f"Stub answer for: {kwargs['q']} [1]"
-        # Default: GenerateQueries node
-        return json.dumps([kwargs["q"]])
+        return await _offline_stub(prompt, **kwargs)
 
 
 # ------------------------------------------------------------------ Generate
@@ -48,6 +65,8 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
     raw = await call_llm(tmpl, q=q)
     try:
         queries = json.loads(raw)
+        if isinstance(queries, dict):  # unwrap {"queries": [...]}
+            queries = queries.get("queries", [])
     except Exception:
         queries = [line.strip() for line in raw.splitlines() if line.strip()]
     return {"question": q, "queries": queries[:5]}  # keep question
@@ -72,12 +91,18 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
 async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
     docs: List[Document] = state["docs"]
     ctx = "\n".join(d.page_content for d in docs)
+
     tmpl = ChatPromptTemplate.from_messages(
         [
             ("system", "Decide if the docs fully answer the question."),
             (
                 "user",
-                'Reply with JSON {"need_more":bool,"new_queries":list}.\nQuestion:{q}\nDocs:\n{ctx}',
+                (
+                    "Reply with JSON {{"
+                    '"need_more":bool,'
+                    '"new_queries":list'
+                    "}}.\nQuestion:{q}\nDocs:\n{ctx}"
+                ),
             ),
         ]
     )
@@ -91,7 +116,13 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
             "docs": state["docs"],
         }
     except Exception:
-        return {"need_more": False}
+        # keep pipeline state intact on parse failure
+        return {
+            "question": state["question"],
+            "queries": state["queries"],
+            "need_more": False,
+            "docs": docs,
+        }
 
 
 # ------------------------------------------------------------------ Synthesize

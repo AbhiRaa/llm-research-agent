@@ -1,25 +1,32 @@
 """
-Very first stub – returns a canned answer so tests can pass.
-Later we'll replace this with a real LangGraph pipeline.
+Build and expose the LangGraph pipeline.
 """
-import asyncio
 from typing import Dict, Any
+from langgraph import StateGraph
+from .nodes import generate_node, search_node, reflect_node, synthesize_node
 
 
-async def answer_question(question: str) -> Dict[str, Any]:
-    # Minimal hard-coded JSON in the target format
-    return {
-        "answer": "Stub answer for: " + question + " [1]",
-        "citations": [
-            {
-                "id": 1,
-                "title": "Example citation",
-                "url": "https://example.com",
-            }
-        ],
-    }
+def _build_graph():
+    sg = StateGraph(Dict[str, Any])
+
+    # Add nodes
+    sg.add_node("generate", generate_node)
+    sg.add_node("search", search_node)
+    sg.add_node("reflect", reflect_node)
+    sg.add_node("synthesize", synthesize_node)
+
+    # Wire edges
+    sg.set_entry_point("generate")
+    sg.connect("generate", "search")
+    sg.connect("search", "reflect")
+    sg.connect("reflect", "search", condition=lambda s: s.get("need_more"))
+    sg.connect("reflect", "synthesize", condition=lambda s: not s.get("need_more"))
+
+    return sg.compile()
 
 
-# Convenience synchronous wrapper for unit tests
-def answer_sync(question: str) -> Dict[str, Any]:
-    return asyncio.run(answer_question(question))
+_GRAPH = _build_graph()
+
+
+async def answer_question(question: str):
+    return await _GRAPH.arun({"question": question})

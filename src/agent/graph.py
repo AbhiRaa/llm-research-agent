@@ -2,7 +2,7 @@
 Build and expose the LangGraph pipeline.
 """
 from typing import Dict, Any
-from langgraph import StateGraph
+from langgraph.graph import StateGraph
 from .nodes import generate_node, search_node, reflect_node, synthesize_node
 
 
@@ -30,3 +30,8 @@ _GRAPH = _build_graph()
 
 async def answer_question(question: str):
     return await _GRAPH.arun({"question": question})
+
+# Synchronous convenience for unit tests
+def answer_sync(question: str):
+    import asyncio
+    return asyncio.run(answer_question(question))

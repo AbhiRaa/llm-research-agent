@@ -7,6 +7,9 @@ offline usage still work.
 import os, random, asyncio, aiohttp, json
 from typing import List
 from langchain.schema import Document
+from dotenv import load_dotenv
+
+load_dotenv()  # load .env file if present
 
 BING_KEY = os.getenv("BING_API_KEY")
 SERPER_KEY = os.getenv("SERPER_API_KEY")

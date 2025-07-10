@@ -3,6 +3,7 @@ Web-search helper.  Uses Bing API when BING_API_KEY is set;
 otherwise returns deterministic mock docs so tests and
 offline usage still work.
 """
+
 import os, random, asyncio, aiohttp
 from typing import List
 from langchain.schema import Document
@@ -52,10 +53,17 @@ async def _bing_search(query: str) -> List[Document]:
 
 
 # --- Public API -------------------------------------------------------------
-async def web_search(query: str) -> List[Document]:
-    if BING_KEY:
+async def web_search(query: str, retries: int = 2) -> List[Document]:
+    """Search with up to `retries` retry attempts on HTTP 429."""
+    attempt = 0
+    while True:
         try:
-            return await _bing_search(query)
-        except Exception:
-            pass
-    return await _mock_search(query)
+            if BING_KEY:
+                return await _bing_search(query)
+        except RuntimeError as e:
+            if "429" in str(e) and attempt < retries:
+                attempt += 1
+                await asyncio.sleep(0.2 * attempt)  # back-off
+                continue
+        # Fallback mock or after retries exhausted
+        return await _mock_search(query)

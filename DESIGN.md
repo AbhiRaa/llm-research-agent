@@ -38,6 +38,7 @@ Generate  →  Web-Search  →  Reflect (≤2 cycles)  →  Synthesize → JSON 
 ## 4. Error Handling & Observability
 * **HTTP 429 / timeout** → exponential backoff, retry ≤3.  
 * **OpenTelemetry (bonus)** → `opentelemetry-sdk` with stdout exporter.
+* 1s timeout per Bing call, 2× retry with exponential back-off.
 
 ## 5. Future Enhancements
 * Slot-aware Reflect  

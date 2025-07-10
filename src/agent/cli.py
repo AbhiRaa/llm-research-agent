@@ -2,6 +2,7 @@
 CLI entry point for the (stub) LLM Research Agent.
 For now it returns a fixed JSON so we have something testable.
 """
+
 import json, sys, asyncio
 from .graph import answer_question
 

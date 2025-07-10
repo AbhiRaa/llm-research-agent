@@ -52,6 +52,7 @@ _GRAPH = _build_graph()
 
 # ========== Public helpers ==========
 
+
 async def answer_question(question: str):
     """Async entrypoint for the CLI."""
     return await _GRAPH.ainvoke({"question": question, "iter": 0})

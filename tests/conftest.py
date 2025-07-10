@@ -2,6 +2,7 @@
 Pytest configuration: ensure `src/` is on sys.path
 so `import agent` works without needing PYTHONPATH env vars.
 """
+
 import sys, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]

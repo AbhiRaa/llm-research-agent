@@ -10,6 +10,8 @@ from langchain.schema import Document
 
 BING_KEY = os.getenv("BING_API_KEY")
 
+TIMEOUT_SECS = 1.0  # short because we retry/fallback quickly
+
 # --- Mock fallback ----------------------------------------------------------
 MOCK_POOL = [
     Document(
@@ -54,16 +56,24 @@ async def _bing_search(query: str) -> List[Document]:
 
 # --- Public API -------------------------------------------------------------
 async def web_search(query: str, retries: int = 2) -> List[Document]:
-    """Search with up to `retries` retry attempts on HTTP 429."""
+    """
+    Run Bing search with:
+    • global TIMEOUT_SECS per request
+    • up to `retries` retry attempts on HTTP 429 or timeout
+    Falls back to mock search if Bing fails or no API key is set.
+    """
     attempt = 0
     while True:
         try:
             if BING_KEY:
-                return await _bing_search(query)
-        except RuntimeError as e:
-            if "429" in str(e) and attempt < retries:
+                return await asyncio.wait_for(_bing_search(query), TIMEOUT_SECS)
+        except (asyncio.TimeoutError, RuntimeError) as e:
+            # Retry only for timeout or explicit HTTP 429 signal
+            if attempt < retries and (
+                "429" in str(e) or isinstance(e, asyncio.TimeoutError)
+            ):
                 attempt += 1
                 await asyncio.sleep(0.2 * attempt)  # back-off
                 continue
-        # Fallback mock or after retries exhausted
+        # Either no Bing key, retries exhausted, or other error → mock
         return await _mock_search(query)

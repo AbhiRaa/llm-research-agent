@@ -162,7 +162,10 @@ async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
             ("user", "Question:{q}\nEvidence:\n{e}"),
         ]
     )
-    answer = await call_llm(tmpl, q=state["question"], e=evidence)
+    answer_raw = await call_llm(tmpl, q=state["question"], e=evidence)
+    # remove any role prefixes the model may add
+    answer = answer_raw.lstrip().removeprefix("Human:").removeprefix("Assistant:")
+    
     citations = [
         {"id": i + 1, "title": d.metadata.get("title"), "url": d.metadata["url"]}
         for i, d in enumerate(docs[:3])

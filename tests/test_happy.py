@@ -1,5 +1,9 @@
-import json, subprocess, sys, os
+import json, subprocess, sys, os, pathlib
+
 from agent import answer_sync
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
 
 
 def test_answer_sync():
@@ -7,14 +11,16 @@ def test_answer_sync():
     assert "answer" in out and "citations" in out
 
 
-def test_cli_stub(tmp_path):
-    # Run the CLI script via subprocess to capture stdout
-    script = os.path.join(os.path.dirname(__file__), "..", "src", "agent", "cli.py")
+def test_cli_stub():
+    # Run "python -m agent.cli  <question>"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = f"{SRC}:{env.get('PYTHONPATH','')}"
     result = subprocess.run(
-        [sys.executable, script, "Who won the 2022 FIFA World Cup?"],
+        [sys.executable, "-m", "agent.cli", "Who won the 2022 FIFA World Cup?"],
         capture_output=True,
         text=True,
+        env=env,
         check=True,
     )
     data = json.loads(result.stdout)
-    assert "answer" in data and data["citations"][0]["id"] == 1
+    assert data["citations"][0]["id"] == 1

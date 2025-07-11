@@ -1,0 +1,19 @@
+receivers:
+  otlp:          # <- default listens on both 0.0.0.0:4317 (gRPC) **and** 0.0.0.0:4318 (HTTP)
+    protocols:
+      http: {}   # keep HTTP enabled (optional – enabled by default)
+      # grpc: {} # not needed but harmless if present
+
+exporters:
+  logging:
+    loglevel: info      # emits every span to stdout – great for local dev
+
+processors:
+  batch:                # best-practice: push in batches
+
+service:
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [batch]
+      exporters:  [logging]

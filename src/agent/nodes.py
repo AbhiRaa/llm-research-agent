@@ -11,6 +11,10 @@ from langchain.prompts import ChatPromptTemplate
 from .tools import web_search
 import openai
 
+from agent.observability import REQUEST_COUNTER, LATENCY_HISTO, init as _get_tracer
+
+_tracer = _get_tracer()
+
 MAX_ITER = 2
 
 # ------------------------------------------------------------------ LLM setup
@@ -53,7 +57,11 @@ else:
 
 
 # ------------------------------------------------------------------ Generate
+@_tracer.start_as_current_span("generate")
 async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("generate").time():
+        REQUEST_COUNTER.labels("generate").inc()
+
     q = state["question"]
     tmpl = ChatPromptTemplate.from_messages(
         [
@@ -87,7 +95,11 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Search
+@_tracer.start_as_current_span("search")
 async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("search").time():
+        REQUEST_COUNTER.labels("search").inc()
+
     queries: List[str] = state["queries"]
     docs_lists = await asyncio.gather(*(web_search(q) for q in queries))
     merged: Dict[str, Document] = {}
@@ -103,7 +115,11 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Reflect
+@_tracer.start_as_current_span("reflect")
 async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("reflect").time():
+        REQUEST_COUNTER.labels("reflect").inc()
+        
     docs: List[Document] = state["docs"]
     ctx = "\n".join(d.page_content for d in docs)
 
@@ -149,7 +165,11 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Synthesize
+@_tracer.start_as_current_span("synthesize")
 async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("synthesize").time():
+        REQUEST_COUNTER.labels("synthesize").inc()
+
     docs: List[Document] = state.get("docs", [])
 
     # Guarantee at least one citation so CLI & tests never break

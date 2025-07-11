@@ -11,6 +11,10 @@ from langchain.prompts import ChatPromptTemplate
 from .tools import web_search
 import openai
 
+from agent.observability import REQUEST_COUNTER, LATENCY_HISTO, init as _get_tracer
+
+_tracer = _get_tracer()
+
 MAX_ITER = 2
 
 # ------------------------------------------------------------------ LLM setup
@@ -53,7 +57,11 @@ else:
 
 
 # ------------------------------------------------------------------ Generate
+@_tracer.start_as_current_span("generate")
 async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("generate").time():
+        REQUEST_COUNTER.labels("generate").inc()
+
     q = state["question"]
     tmpl = ChatPromptTemplate.from_messages(
         [
@@ -87,7 +95,11 @@ async def generate_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Search
+@_tracer.start_as_current_span("search")
 async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("search").time():
+        REQUEST_COUNTER.labels("search").inc()
+
     queries: List[str] = state["queries"]
     docs_lists = await asyncio.gather(*(web_search(q) for q in queries))
     merged: Dict[str, Document] = {}
@@ -103,34 +115,43 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Reflect
+@_tracer.start_as_current_span("reflect")
 async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("reflect").time():
+        REQUEST_COUNTER.labels("reflect").inc()
+        
     docs: List[Document] = state["docs"]
     ctx = "\n".join(d.page_content for d in docs)
 
     tmpl = ChatPromptTemplate.from_messages(
         [
-            ("system", "Decide if the docs fully answer the question."),
             (
-                "user",
-                (
-                    "Reply with JSON {{"
-                    '"need_more":bool,'
-                    '"new_queries":list'
-                    "}}.\nQuestion:{q}\nDocs:\n{ctx}"
-                ),
+                "system",
+                "You are an evidence checker.\n"
+                "Step 1 – list the REQUIRED slots (facts) the answer must contain.\n"
+                "Step 2 – read the docs and list which slots are already filled.\n"
+                "Step 3 – output STRICT JSON exactly like:\n"
+                '{{"slots": <list>, "filled": <list>, '
+                '"need_more": <bool>, "new_queries": <list>}}\n'
+                "Rules: need_more is true iff some slot missing OR conflicting docs. "
+                "Return at most 3 new_queries.",
             ),
+            ("user", "Question: {q}\nDocs:\n{ctx}"),
         ]
     )
     raw = await call_llm(tmpl, q=state["question"], ctx=ctx[:4000])
     try:
         data = json.loads(raw)
+        need_more = bool(data.get("need_more"))
+        if state["iter"] >= MAX_ITER - 1:
+            need_more = False
         return {
-            "question": state["question"],
+            **state,
+            "slots": data.get("slots", []),
+            "filled": data.get("filled", []),
+            "need_more": need_more,
             "queries": data.get("new_queries") or state["queries"],
-            # Stop automatically after MAX_ITER
-            "need_more": bool(data.get("need_more")) and state["iter"] < MAX_ITER - 1,
-            "docs": state["docs"],
-            "iter": state["iter"] + 1,  # increment
+            "iter": state["iter"] + 1,
         }
     except Exception:
         # keep pipeline state intact on parse failure
@@ -144,7 +165,11 @@ async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------ Synthesize
+@_tracer.start_as_current_span("synthesize")
 async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    with LATENCY_HISTO.labels("synthesize").time():
+        REQUEST_COUNTER.labels("synthesize").inc()
+
     docs: List[Document] = state.get("docs", [])
 
     # Guarantee at least one citation so CLI & tests never break
@@ -165,7 +190,7 @@ async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
     answer_raw = await call_llm(tmpl, q=state["question"], e=evidence)
     # remove any role prefixes the model may add
     answer = answer_raw.lstrip().removeprefix("Human:").removeprefix("Assistant:")
-    
+
     citations = [
         {"id": i + 1, "title": d.metadata.get("title"), "url": d.metadata["url"]}
         for i, d in enumerate(docs[:3])

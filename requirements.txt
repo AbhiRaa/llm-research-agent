@@ -73,3 +73,6 @@ opentelemetry-exporter-otlp==1.25.0
 prometheus-client==0.20.0
 
 redis>=5.0      # official redis-py client
+
+fastapi
+uvicorn[standard]

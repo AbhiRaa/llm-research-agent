@@ -80,11 +80,36 @@ def init() -> trace.Tracer:
     # Always register the guarded console exporter
     provider.add_span_processor(BatchSpanProcessor(_SafeConsoleExporter()))
 
-    # If OTLP endpoint supplied, add network exporter
+    # ------------------------------------------------------------------
+    # OTLP exporter: only attach if the collector hostname actually
+    # resolves *and* we’re not inside a pytest run (tests run the CLI
+    # offline, so a missing collector would crash at shutdown).
+    # ------------------------------------------------------------------
+
+    import socket, urllib.parse as _url
+
+    def _collector_resolves(url: str) -> bool:
+        host = _url.urlparse(url).hostname
+        try:
+            socket.getaddrinfo(host, None)
+            return True
+        except socket.gaierror:
+            return False
+
     otlp_ep = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-    if otlp_ep:
+
+    if (
+        otlp_ep
+        and _collector_resolves(otlp_ep)
+        and "PYTEST_CURRENT_TEST" not in os.environ
+    ):
         provider.add_span_processor(
             BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_ep))
+        )
+    elif otlp_ep:  # endpoint set but unusable
+        print(
+            f"[observability] OTLP exporter skipped – collector unreachable: {otlp_ep}",
+            file=sys.stderr,
         )
 
     _tracer = trace.get_tracer(__name__)

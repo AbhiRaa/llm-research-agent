@@ -32,3 +32,14 @@ User Q → GenerateQueries → WebSearchTool → Reflect ⟳ (≤2) → Synthesi
 ### Tests
 
     pytest -q          # 6 cases: happy, no-result, 429, timeout, two-round, CLI
+
+
+### 🔌 Streaming API
+
+| Type | URL | Example |
+|------|-----|---------|
+| **SSE** | `GET /api/stream?question=…` |<br>`curl -N "http://localhost:8001/api/stream?question=Who+invented+Docker?"` |
+| **WebSocket** | `ws://…/api/ws?question=…` |<br>`npx wscat -c "ws://localhost:8001/api/ws?question=Explain+Kubernetes+HPA"` |
+
+The stream emits multiple `token` events followed by a final `done` payload that
+contains the full answer and citations.

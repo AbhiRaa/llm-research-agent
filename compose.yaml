@@ -1,32 +1,48 @@
-
 services:
+  # ───── Research-agent container ─────
   agent:
     build: .
     depends_on:
-      - redis # Redis for caching
+      - redis
+    # ⬇ expose *both* ports
     ports:
-      - "8000:8000"          # Prometheus scrape
+      - "8000:8000"      # Prometheus scrape (already there)
+      - "8001:8001"      # NEW – SSE / WebSocket API
     env_file:
       - .env
     environment:
-      REDIS_URL: redis://redis:6379/0  
-    # Example command – overridden by `docker compose run`
-    command: ["Who won the 2022 FIFA World Cup?"]
+      REDIS_URL: redis://redis:6379/0
 
-   # ───── OpenTelemetry collector ─────
+    # Run FastAPI server instead of the demo CLI one-shot
+
+    entrypoint: [] # override the default entrypoint
+    command:
+      - uvicorn
+      - agent.server:app          # FastAPI entry-point
+      - --host=0.0.0.0
+      - --port=8001
+      - --proxy-headers
+    # helpful readiness check so docker-compose waits for it
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/docs"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ───── OpenTelemetry collector ─────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.98.0
     command: ["--config=/etc/otel.yaml"]
     volumes:
       - ./otel.yaml:/etc/otel.yaml:ro
     ports:
-      - "4318:4318"        # OTLP/HTTP  (traces from the agent)
-      - "8888:8888"        # Collector's own Prometheus metrics
+      - "4318:4318"      # OTLP/HTTP
+      - "8888:8888"      # Collector Prom metrics
 
   # ───── Redis service ─────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"          # For local redis-cli
-    command: ["redis-server", "--save", "''",  "--appendonly", "no"]
+      - "6379:6379"
+    command: ["redis-server", "--save", "''", "--appendonly", "no"]

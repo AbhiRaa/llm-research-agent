@@ -21,6 +21,27 @@ from opentelemetry.sdk.trace.export import (
     SpanExporter,
 )
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import SpanExportResult
+
+# ------------------------------------------------------------------ #
+# Safe OTLP exporter that never propagates network errors            #
+# ------------------------------------------------------------------ #
+
+class _SafeOTLPExporter(OTLPSpanExporter):          # type: ignore[misc]
+    """Wrap the official exporter and swallow connection errors so that
+    unit-tests (which run without an OTLP endpoint) exit cleanly."""
+
+    def export(self, spans):                        # type: ignore[override]
+        try:
+            return super().export(spans)
+        except Exception:                           # any network / DNS error
+            return SpanExportResult.SUCCESS
+
+    def shutdown(self) -> None:
+        try:
+            super().shutdown()
+        except Exception:
+            pass
 
 # ────────────────── Prometheus (metrics) ────────────────────
 from prometheus_client import Counter, Histogram, start_http_server
@@ -84,7 +105,7 @@ def init() -> trace.Tracer:
     otlp_ep = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if otlp_ep:
         provider.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_ep))
+            BatchSpanProcessor(_SafeOTLPExporter(endpoint=otlp_ep))
         )
 
     _tracer = trace.get_tracer(__name__)

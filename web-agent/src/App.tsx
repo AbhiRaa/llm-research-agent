@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react"
+import Header from "./components/Header"
 import Chat from "./components/Chat"
-import { Moon, Sun, Monitor } from "lucide-react"
+import useStream from "./hooks/useStream"
 
 type Theme = "light" | "dark" | "system"
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>("system")
+  const { messages, ask, clearMessages } = useStream()
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -20,38 +22,16 @@ export default function App() {
   }, [theme])
 
   return (
-    <div className="relative h-screen overflow-hidden">
-      {/* Theme Toggle */}
-      <div className="fixed right-4 top-4 z-50">
-        <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1 shadow-lg">
-          <button
-            onClick={() => setTheme("light")}
-            className={`rounded-md p-2 transition-all ${
-              theme === "light" ? "bg-blue-500 text-white" : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <Sun className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setTheme("dark")}
-            className={`rounded-md p-2 transition-all ${
-              theme === "dark" ? "bg-blue-500 text-white" : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <Moon className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setTheme("system")}
-            className={`rounded-md p-2 transition-all ${
-              theme === "system" ? "bg-blue-500 text-white" : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            <Monitor className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <Chat />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <Header 
+        theme={theme} 
+        setTheme={setTheme} 
+        onClearChat={clearMessages}
+        showClearButton={messages.length > 0}
+      />
+      <main className="flex-1 overflow-hidden">
+        <Chat messages={messages} ask={ask} />
+      </main>
     </div>
   )
 }

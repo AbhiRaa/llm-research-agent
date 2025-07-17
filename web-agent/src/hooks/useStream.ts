@@ -1,14 +1,21 @@
 import { useState, useCallback, useRef } from "react";
 
+export interface Citation {
+  id: number;
+  title: string;
+  url: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   text: string;
   timestamp: Date;
   isStreaming?: boolean;
+  citations?: Citation[];
 }
 
-export function useStream() {
+export default function useStream() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -66,11 +73,11 @@ export function useStream() {
 
       eventSource.addEventListener("done", (e: MessageEvent) => {
         try {
-          const { answer } = JSON.parse(e.data);
+          const { answer, citations } = JSON.parse(e.data);
           
           setMessages(prev => prev.map(msg => 
             msg.id === assistantMessage.id 
-              ? { ...msg, text: answer, isStreaming: false }
+              ? { ...msg, text: answer, citations: citations || [], isStreaming: false }
               : msg
           ));
         } catch (error) {
@@ -81,7 +88,9 @@ export function useStream() {
         }
       });
 
-      eventSource.addEventListener("error", () => {
+      eventSource.addEventListener("error", (error) => {
+        console.error('EventSource error:', error);
+        
         setMessages(prev => prev.map(msg => 
           msg.id === assistantMessage.id 
             ? { ...msg, text: "Sorry, I encountered an error. Please try again.", isStreaming: false }

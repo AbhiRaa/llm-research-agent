@@ -50,7 +50,7 @@ def _build_graph():
 _GRAPH = _build_graph()
 
 
-# ========== Public helpers ==========
+# ----------- Public helpers -------------
 
 
 async def answer_question(question: str):

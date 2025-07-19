@@ -1,4 +1,10 @@
-import asyncio, pytest
+"""
+The search tool must respect the global TIMEOUT_SECS wrapper.
+We replace the Bing search function with an artificial 2‑second delay
+(which exceeds TIMEOUT_SECS=1), ensuring the agent times out gracefully
+and falls back to mocks.
+"""
+import asyncio
 from agent import answer_sync
 from agent import tools
 

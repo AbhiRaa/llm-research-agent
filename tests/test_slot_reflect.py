@@ -1,9 +1,12 @@
-import json
+"""
+Simulate the “Reflect” node needing a second search round because a required
+slot is missing on the first pass, then filled on the second.
+"""
 from agent import answer_sync, nodes
 
 
 class FakeReflect:
-    """Force missing slot on first round, filled on second."""
+    """Two‑step finite‑state machine to drive the LangGraph loop."""
 
     def __init__(self):
         self.calls = 0
@@ -11,6 +14,7 @@ class FakeReflect:
     async def __call__(self, state):
         self.calls += 1
         if self.calls == 1:
+            # First call → signal need_more=True so router loops
             return {
                 **state,
                 "slots": ["winner"],
@@ -19,6 +23,7 @@ class FakeReflect:
                 "queries": ["winner 2022 World Cup"],
                 "iter": state["iter"] + 1,
             }
+        # Second call → all good, proceed to synthesize
         return {
             **state,
             "slots": ["winner"],

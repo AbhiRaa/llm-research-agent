@@ -4,7 +4,7 @@ otherwise returns deterministic mock docs so tests and
 offline usage still work.
 """
 
-import os, random, asyncio, aiohttp, json
+import os, asyncio, aiohttp
 from typing import List
 from langchain.schema import Document
 from dotenv import load_dotenv
@@ -45,7 +45,7 @@ async def _mock_search(query: str) -> List[Document]:
     return [_stable_choice(query)]
 
 
-# --- Real Bing call ---------------------------------------------------------
+# --- Bing call ---------------------------------------------------------
 async def _bing_search(query: str) -> List[Document]:
     url = "https://api.bing.microsoft.com/v7.0/search"
     headers = {"Ocp-Apim-Subscription-Key": BING_KEY}
@@ -66,33 +66,27 @@ async def _bing_search(query: str) -> List[Document]:
     return docs
 
 
-# --- Public API -------------------------------------------------------------
-async def web_search(query: str, retries: int = 2) -> List[Document]:
-    """
-    Run Bing search with:
-    • global TIMEOUT_SECS per request
-    • up to `retries` retry attempts on HTTP 429 or timeout
-    Falls back to mock search if Bing fails or no API key is set.
-    """
+# --- a non‑cached helper for tests / benchmarks -----------------------------
+async def _web_search_uncached(query: str, retries: int = 2) -> List[Document]:
+    """Single‑shot search -> Bing/Serper/mock, no Redis layer."""
     attempt = 0
     while True:
         try:
             if BING_KEY:
                 return await asyncio.wait_for(_bing_search(query), TIMEOUT_SECS)
+            if SERPER_KEY:
+                return await asyncio.wait_for(_serper_search(query), TIMEOUT_SECS)
         except (asyncio.TimeoutError, RuntimeError) as e:
-            # Retry only for timeout or explicit HTTP 429 signal
             if attempt < retries and (
                 "429" in str(e) or isinstance(e, asyncio.TimeoutError)
             ):
                 attempt += 1
-                await asyncio.sleep(0.2 * attempt)  # back-off
+                await asyncio.sleep(0.2 * attempt)
                 continue
-        # Either no Bing key, retries exhausted, or other error → mock
         return await _mock_search(query)
 
 
-# ---------------------------------------------------------------------------
-# NEW: real Google SERP via Serper.dev
+# ------ NEW: real Google SERP via Serper.dev ---------------------------------
 async def _serper_search(query: str) -> List[Document]:
     """
     Call Serper.dev (Google Search API) and return top 5 organic snippets.

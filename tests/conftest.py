@@ -1,6 +1,9 @@
 """
-Pytest configuration: ensure `src/` is on sys.path
-so `import agent` works without needing PYTHONPATH env vars.
+Pytest bootstrap.
+
+* Prepends the project’s *src/* directory to ``sys.path`` so that a plain
+  ``import agent`` works even when the user hasn’t set PYTHONPATH.
+* No fixtures are defined here – it is purely path‑setup.
 """
 
 import sys, pathlib

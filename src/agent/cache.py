@@ -9,8 +9,8 @@ Thin Redis wrapper that caches *JSON-serialisable* results.
 
 from __future__ import annotations
 
-import os, sys, json, asyncio
-from typing import Any, Awaitable, Callable, List, Dict, TypedDict
+import os, sys, json
+from typing import Any, Awaitable, Callable, List, TypedDict
 
 import redis.asyncio as redis
 from langchain.schema import Document

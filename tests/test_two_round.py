@@ -1,3 +1,7 @@
+"""
+Verifies that the LangGraph router actually performs *one* extra
+Generate→Search→Reflect cycle when ``need_more`` is True on the first reflect.
+"""
 from agent import answer_sync, nodes
 from agent import graph as g
 

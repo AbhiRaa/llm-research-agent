@@ -1,6 +1,6 @@
 # Design Document – LLM Research Agent
 
-**Author:** Abhinav • **Date:** $(date +%d\ %b\ %Y)
+**Author:** Abhinav • **Date:** 19 July 2025
 
 ---
 
@@ -19,7 +19,7 @@ Generate  →  Web-Search  →  Reflect (≤2 cycles)  →  Synthesize → JSON 
       |  (state & async DAG)   |
       +---+---+---+---+---+----+
           |   |   |   |   |
-          |   |   |   |   +--> 4. **Synthesize Node**
+          |   |   |   |   +-->  4. **Synthesize Node**
           |   |   |   +-------> 3. **Reflect Node**
           |   |   +-----------> 2. **WebSearch Node**
           |   +---------------> 1. **GenerateQueries Node**

@@ -10,42 +10,43 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 
 ## 1 – Architecture at a Glance
 
-```mermaid
-flowchart LR
-  %% ────────── End‑users ──────────
-  subgraph User
-    Q[CLI / HTTP / WS<br/>Question]
-  end
+                                                +-----------------------------+
+                                                |   CLI / HTTP / WS question  |
+                                                +--------------+--------------+
+                                                            |
+                                                            v
+                +------------------+           +-----------------------------+
+                |  Generate        |           |  Web Search (Bing / Serper) |
+                |  queries         |           +---------------+-------------+
+                +--------+---------+                           |   (1 h LRU)
+                            |                                     |  cache layer
+                            |                                     v
+                            |                        +------------+------------+
+                            |                        |        Redis            |
+                            |                        +------------+------------+
+                            |                                     ^
+                            |                                     |
+                            v                                     |
+                +--------+---------+                           |
+                |  Reflect (slot‑   |<--------------------------+
+                |  aware checker)   |
+                +--------+---------+
+                            |
+                            | need_more?  yes ──► (loops back to Web Search)
+                            | 
+                            | no
+                            v
+                +--------+---------+
+                |   Synthesize     |  (≤ 80 words + space‑separated [n] cites)
+                +--------+---------+
+                            |
+                            v
+                +--------+---------+
+                |   JSON answer    |
+                +------------------+
 
-  %% ─────── LangGraph pipeline ───────
-  subgraph LangGraph
-    A[Generate<br/>queries]
-    B[Web Search<br/>(Bing / Serper -> Redis)]
-    C[Reflect<br/>(slot filler)]
-    D{need_more ?}
-    E[Synthesize<br/>&lt;= 80 w &amp; cites]
-  end
-
-  %% ───────── Infrastructure ─────────
-  subgraph Infra
-    R[(Redis)]
-    OTel[(OTel traces)]
-    Prom[(Prom metrics)]
-  end
-
-  %% ─────────── Data‑flow ───────────
-  Q --> A --> B --> C --> D
-  D -- yes --> B
-  D -- no  --> E --> Q
-
-  %% cache edge
-  B --|1 h cache| R
-
-  %% telemetry edges
-  A --> OTel & Prom
-  B --> OTel & Prom
-  C --> OTel & Prom
-  E --> OTel & Prom
+   Telemetry: every boxed phase ↑ sends spans to **OpenTelemetry**  
+              and latency counters / histograms to **Prometheus**.
 
 ---
 

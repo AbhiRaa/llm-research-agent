@@ -10,6 +10,7 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 
 ## 1 – Architecture at a Glance
 
+```mermaid
 flowchart LR
   %% ─────────── End‑users ───────────
   subgraph User
@@ -22,7 +23,7 @@ flowchart LR
     B[Web Search<br/>(Bing / Serper &#8594; Redis)]
     C[Reflect<br/>(slot filler)]
     D{need_more&nbsp;?}
-    E[Synthesize<br/>&#8804; 80&nbsp;w&nbsp;&nbsp;&amp;&nbsp;cites]
+    E[Synthesize<br/>&#8804;&nbsp;80&nbsp;w&nbsp;&amp;&nbsp;cites]
   end
 
   %% ─────────── Infrastructure ───────────
@@ -34,11 +35,11 @@ flowchart LR
 
   %% ─────────── Data‑flow ───────────
   Q --> A --> B --> C --> D
-  D -- yes 🔄 --> B
-  D -- no --> E --> Q
+  D -- yes --> B
+  D -- no  --> E --> Q
 
   %% cache edge
-  B --| 1&nbsp;h&nbsp;cache | R
+  B --|1&nbsp;h&nbsp;cache| R
 
   %% telemetry edges
   A --> OTel
@@ -50,7 +51,7 @@ flowchart LR
   B --> Prom
   C --> Prom
   E --> Prom
-
+  
 ---
 
 ## 2 – Local Dev
@@ -163,7 +164,6 @@ Ask a question; the UI connects to ws://localhost:8001/api/ws and streams tokens
 | **Structured function calling in Synthesize** | ●●○    | Enforce JSON schema & real URLs (partly prototyped).                                  |                   |
 | **Vector‑store RAG**                          | ●●○    | Index cached search docs; Reflect can query embeddings instead of extra Google calls. |                   |
 | **Tool selection (HNSW, wiki, arXiv)**        | ●●●    | Add more search “tools” & use an LLM‑router to pick.                                  |                   |
-| **Frontend UI**                               | ●○○    | Minimal React / HTMX page consuming SSE for real‑time tokens.                         |                   |
 | **Auth & billing**                            | ●●○    | Rate‑limit per API‑key, record token usage, integrate Stripe.                         |                   |
 | **Fine‑grained metrics**                      | ●○○    | Attach `model.name`, `cache.hit`, \`provider="bing                                    | serper"\` labels. |
 

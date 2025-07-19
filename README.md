@@ -8,25 +8,25 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 
 ---
 
-## 1 – Architecture at a Glance
+## 1 – Architecture at a Glance
 
 ```mermaid
 flowchart LR
-  %% ─────────── End‑users ───────────
+  %% ────────── End‑users ──────────
   subgraph User
-    Q[CLI / HTTP / WS<br/>Question]
+    Q[CLI / HTTP / WS<br/>Question]
   end
 
-  %% ───────── LangGraph pipeline ─────────
+  %% ─────── LangGraph pipeline ───────
   subgraph LangGraph
     A[Generate<br/>queries]
-    B[Web Search<br/>(Bing / Serper &#8594; Redis)]
+    B[Web Search<br/>(Bing / Serper -> Redis)]
     C[Reflect<br/>(slot filler)]
-    D{need_more&nbsp;?}
-    E[Synthesize<br/>&#8804;&nbsp;80&nbsp;w&nbsp;&amp;&nbsp;cites]
+    D{need_more ?}
+    E[Synthesize<br/>&lt;= 80 w &amp; cites]
   end
 
-  %% ─────────── Infrastructure ───────────
+  %% ───────── Infrastructure ─────────
   subgraph Infra
     R[(Redis)]
     OTel[(OTel traces)]
@@ -39,19 +39,14 @@ flowchart LR
   D -- no  --> E --> Q
 
   %% cache edge
-  B --|1&nbsp;h&nbsp;cache| R
+  B --|1 h cache| R
 
   %% telemetry edges
-  A --> OTel
-  B --> OTel
-  C --> OTel
-  E --> OTel
+  A --> OTel & Prom
+  B --> OTel & Prom
+  C --> OTel & Prom
+  E --> OTel & Prom
 
-  A --> Prom
-  B --> Prom
-  C --> Prom
-  E --> Prom
-  
 ---
 
 ## 2 – Local Dev

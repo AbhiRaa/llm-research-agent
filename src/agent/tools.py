@@ -32,14 +32,16 @@ MOCK_POOL = [
     ),
 ]
 
+
 # Ensure the mock pool is deterministic
 def _stable_choice(query: str) -> Document:
     """Pick a mock doc deterministically based on the query."""
     idx = abs(hash(query)) % len(MOCK_POOL)
     return MOCK_POOL[idx]
 
+
 async def _mock_search(query: str) -> List[Document]:
-    await asyncio.sleep(0.05)          # simulate latency
+    await asyncio.sleep(0.05)  # simulate latency
     return [_stable_choice(query)]
 
 
@@ -122,7 +124,7 @@ async def _serper_search(query: str) -> List[Document]:
 
 
 # --- Public API -------------------------------------------------------------
-@cached(ttl=3600)        # 1-hour cache
+@cached(ttl=3600)  # 1-hour cache
 async def web_search(query: str, retries: int = 2) -> List[Document]:
     """
     Try Bing first (if key present), else Serper.dev, both with:

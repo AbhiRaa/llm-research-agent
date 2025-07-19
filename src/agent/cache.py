@@ -63,7 +63,9 @@ def _docs_to_json(docs: List[Document]) -> str:
 def _docs_from_json(payload: str) -> List[Document]:
     raw: List[_DocJSON] = json.loads(payload)
     return [
-        Document(page_content=d["content"], metadata={"title": d["title"], "url": d["url"]})
+        Document(
+            page_content=d["content"], metadata={"title": d["title"], "url": d["url"]}
+        )
         for d in raw
     ]
 

@@ -119,7 +119,7 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
 async def reflect_node(state: Dict[str, Any]) -> Dict[str, Any]:
     with LATENCY_HISTO.labels("reflect").time():
         REQUEST_COUNTER.labels("reflect").inc()
-        
+
     docs: List[Document] = state["docs"]
     ctx = "\n".join(d.page_content for d in docs)
 

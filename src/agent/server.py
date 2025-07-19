@@ -1,9 +1,10 @@
 import asyncio, json
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-from .graph import answer_question   # existing helper
+from .graph import answer_question  # existing helper
 
 app = FastAPI(title="LLM Research Agent (streaming)")
+
 
 # ---- internal helper -------------------------------------------------
 async def _run_stream(question: str):
@@ -21,7 +22,7 @@ async def _run_stream(question: str):
     for i in range(0, len(answer), 50):
         chunk = answer[i : i + 50]
         yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
-        await asyncio.sleep(0.02)      # tiny delay so clients see streaming
+        await asyncio.sleep(0.02)  # tiny delay so clients see streaming
 
     payload = {"answer": answer, "citations": citations}
     yield f"event: done\ndata: {json.dumps(payload)}\n\n"
@@ -59,7 +60,7 @@ async def websocket_endpoint(ws: WebSocket):
             # strip the SSE framing so WS just gets JSON objects
             if chunk.startswith("event: token"):
                 _, data_line, _ = chunk.splitlines()
-                await ws.send_text(data_line[6:])         # after "data: "
+                await ws.send_text(data_line[6:])  # after "data: "
             elif chunk.startswith("event: done"):
                 _, data_line, _ = chunk.splitlines()
                 await ws.send_text(data_line[6:])

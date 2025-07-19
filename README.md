@@ -10,32 +10,46 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 
 ## 1 – Architecture at a Glance
 
-```mermaid
 flowchart LR
-    subgraph User
-        Q[CLI / HTTP / WS<br/>Question]
-    end
-    subgraph LangGraph
-        A[Generate<br/>queries]
-        B[Web Search<br/>(Bing / Serper → Redis)]
-        C[Reflect<br/>(slot filler)]
-        D{need_more?}
-        E[Synthesize<br/>≤80 w & cites]
-    end
-    subgraph Infra
-        R[(Redis)]
-        OTel[(OTel traces)]
-        Prom[(Prom metrics)]
-    end
+  %% ─────────── End‑users ───────────
+  subgraph User
+    Q[CLI / HTTP / WS<br/>Question]
+  end
 
-    Q --> A --> B --> C --> D
-    D -- yes ⟳2 --> B
-    D -- no  --> E --> Q
+  %% ───────── LangGraph pipeline ─────────
+  subgraph LangGraph
+    A[Generate<br/>queries]
+    B[Web Search<br/>(Bing / Serper &#8594; Redis)]
+    C[Reflect<br/>(slot filler)]
+    D{need_more&nbsp;?}
+    E[Synthesize<br/>&#8804; 80&nbsp;w&nbsp;&nbsp;&amp;&nbsp;cites]
+  end
 
-    B <--> |1 h cache| R
-    A & B & C & E --> OTel & Prom
+  %% ─────────── Infrastructure ───────────
+  subgraph Infra
+    R[(Redis)]
+    OTel[(OTel traces)]
+    Prom[(Prom metrics)]
+  end
 
-```
+  %% ─────────── Data‑flow ───────────
+  Q --> A --> B --> C --> D
+  D -- yes 🔄 --> B
+  D -- no --> E --> Q
+
+  %% cache edge
+  B --| 1&nbsp;h&nbsp;cache | R
+
+  %% telemetry edges
+  A --> OTel
+  B --> OTel
+  C --> OTel
+  E --> OTel
+
+  A --> Prom
+  B --> Prom
+  C --> Prom
+  E --> Prom
 
 ---
 
@@ -192,9 +206,6 @@ Ask a question; the UI connects to ws://localhost:8001/api/ws and streams tokens
 | 💬 **Minimal React/Vite front‑end**                      | ✅ Done                    | `web/` (or `ui/`) folder serves a Vite‑built chat UI that connects via the WS endpoint; start with `npm run dev`.                                                           |
 | 📑 **OpenAI function‑calling to constrain *Synthesize*** | ❌ **Not implemented yet** | Current synthesize node uses plain chat completion; adding a strict function‑call wrapper is still on the backlog.                                                          |
 | 🔗 **Slot‑Aware Reflect loop**                           | ✅ Done                    | `reflect_node` emits `need_more` + `new_queries`; router loops back to *Search* until all required slots are filled or `MAX_ITER` reached.                                  |
-
-
-::contentReference[oaicite:0]{index=0}
 
 
 

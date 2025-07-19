@@ -1,9 +1,18 @@
 import asyncio, json
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from .graph import answer_question  # existing helper
 
 app = FastAPI(title="LLM Research Agent (streaming)")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---- internal helper -------------------------------------------------

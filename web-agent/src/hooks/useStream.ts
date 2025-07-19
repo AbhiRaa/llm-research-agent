@@ -49,8 +49,9 @@ export default function useStream() {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
       const eventSource = new EventSource(
-        `/api/stream?question=${encodeURIComponent(question)}`,
+        `${baseUrl}/api/stream?question=${encodeURIComponent(question)}`,
       );
       
       eventSourceRef.current = eventSource;

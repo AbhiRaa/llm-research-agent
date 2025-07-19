@@ -28,14 +28,17 @@ def test_answer_sync():
 # --------------------------------------------------------------------------- #
 def test_cli_stub():
     """
-    Spawn a *real* Python subprocess that runs the CLI entry‑point.
+    Spawn a *real* Python subprocess that runs the CLI entry‑point *offline*.
 
-    We set PYTHONPATH in the child process so it can import ``agent``
-    regardless of the venv / cwd of the parent test runner.
+    We deliberately **remove** BING_API_KEY / SERPER_API_KEY from the child
+    environment so the web‑search tool takes the deterministic mock path,
+    guaranteeing the test is stable on any developer machine or CI runner.
     """
     # Run "python -m agent.cli  <question>"
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{SRC}:{env.get('PYTHONPATH','')}"
+    env.pop("BING_API_KEY",  None)      # force stub search
+    env.pop("SERPER_API_KEY", None)
     result = subprocess.run(
         [sys.executable, "-m", "agent.cli", "Who won the 2022 FIFA World Cup?"],
         capture_output=True,

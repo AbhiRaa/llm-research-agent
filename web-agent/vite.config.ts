@@ -12,6 +12,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "src": path.resolve(__dirname, "./src"),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
   build: {
     // Ensure TypeScript paths are resolved correctly

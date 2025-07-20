@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd web-agent && npm run build",
+  "outputDirectory": "web-agent/dist",
+  "installCommand": "cd web-agent && npm install",
+  "devCommand": "cd web-agent && npm run dev"
+}

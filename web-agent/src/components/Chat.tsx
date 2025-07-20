@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react"
 import type { Message as MessageType } from "@/hooks/useStream"
 import Message from "./Message"
-import TextArea from "src/components/TextArea"
+import TextArea from "@/components/TextArea"
 import { Sparkles, Globe, Zap, BookOpen } from "lucide-react"
 
 interface ChatProps {

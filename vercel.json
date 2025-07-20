@@ -1,10 +1,12 @@
 {
-  "functions": {
-    "web-agent/src/**/*.{js,ts,tsx}": {
-      "includeFiles": "web-agent/**"
+  "build": {
+    "env": {
+      "VITE_API_BASE_URL": "https://llm-research-agent-production.up.railway.app"
     }
   },
   "buildCommand": "npm --prefix web-agent run build",
   "outputDirectory": "web-agent/dist",
-  "installCommand": "npm --prefix web-agent install"
+  "installCommand": "npm --prefix web-agent install",
+  "framework": null,
+  "publicDirectory": false
 }

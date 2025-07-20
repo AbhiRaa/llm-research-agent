@@ -1,6 +1,10 @@
 {
-  "buildCommand": "cd web-agent && npm run build",
+  "functions": {
+    "web-agent/src/**/*.{js,ts,tsx}": {
+      "includeFiles": "web-agent/**"
+    }
+  },
+  "buildCommand": "npm --prefix web-agent run build",
   "outputDirectory": "web-agent/dist",
-  "installCommand": "cd web-agent && npm install",
-  "devCommand": "cd web-agent && npm run dev"
+  "installCommand": "npm --prefix web-agent install"
 }

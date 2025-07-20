@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       // This alias is for shadcn/ui
       "@": path.resolve(__dirname, "./src"),
+      "src": path.resolve(__dirname, "./src"),
     },
   },
   build: {

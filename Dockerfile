@@ -19,4 +19,5 @@ COPY README.md .
 ENV PYTHONPATH=/app/src
 
 # ---------- Entrypoint ----------
-ENTRYPOINT ["python", "-m", "agent.cli"]
+# Use CMD instead of ENTRYPOINT so Railway can override the command
+CMD ["python", "-m", "agent.cli"]

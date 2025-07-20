@@ -14,6 +14,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    return {"message": "LLM Research Agent API", "status": "running"}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
 
 # ---- internal helper -------------------------------------------------
 async def _run_stream(question: str):

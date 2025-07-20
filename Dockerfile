@@ -15,6 +15,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ---------- Source code ----------
 COPY src ./src
 COPY README.md .
+COPY start.sh .
+RUN chmod +x start.sh
 
 ENV PYTHONPATH=/app/src
 

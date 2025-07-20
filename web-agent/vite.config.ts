@@ -11,6 +11,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Ensure TypeScript paths are resolved correctly
+    rollupOptions: {
+      external: [],
+    },
+  },
   // Add the proxy for API requests
   server: {
     proxy: {

@@ -22,6 +22,20 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
+@app.get("/debug")
+async def debug(question: str = "What is AI?"):
+    """Debug endpoint to test the agent pipeline"""
+    try:
+        result = await answer_question(question)
+        return {"success": True, "result": result}
+    except Exception as e:
+        import traceback
+        return {
+            "success": False, 
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
 
 # ---- internal helper -------------------------------------------------
 async def _run_stream(question: str):
@@ -31,18 +45,32 @@ async def _run_stream(question: str):
     For now we fake token streaming by sending the final answer in
     50-character chunks. Replace with real token callbacks later.
     """
-    result = await answer_question(question)
-    answer = result["answer"]
-    citations = result["citations"]
+    try:
+        result = await answer_question(question)
+        answer = result.get("answer", "Sorry, I encountered an error. Please try again.")
+        citations = result.get("citations", [])
 
-    # naive chunking for PoC
-    for i in range(0, len(answer), 50):
-        chunk = answer[i : i + 50]
-        yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
-        await asyncio.sleep(0.02)  # tiny delay so clients see streaming
+        # naive chunking for PoC
+        for i in range(0, len(answer), 50):
+            chunk = answer[i : i + 50]
+            yield f"event: token\ndata: {json.dumps({'text': chunk})}\n\n"
+            await asyncio.sleep(0.02)  # tiny delay so clients see streaming
 
-    payload = {"answer": answer, "citations": citations}
-    yield f"event: done\ndata: {json.dumps(payload)}\n\n"
+        payload = {"answer": answer, "citations": citations}
+        yield f"event: done\ndata: {json.dumps(payload)}\n\n"
+        
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error in _run_stream: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Send error response to client
+        error_msg = "Sorry, I encountered an error. Please try again."
+        yield f"event: token\ndata: {json.dumps({'text': error_msg})}\n\n"
+        
+        payload = {"answer": error_msg, "citations": []}
+        yield f"event: done\ndata: {json.dumps(payload)}\n\n"
 
 
 # ---- SSE endpoint ----------------------------------------------------

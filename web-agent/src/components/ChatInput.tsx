@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import type { KeyboardEvent } from "react"
 import { Send, Search } from "lucide-react"
 
-export default function TextArea({ onSend }: { onSend: (q: string) => void }) {
+export default function ChatInput({ onSend }: { onSend: (q: string) => void }) {
   const [val, setVal] = useState("")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 

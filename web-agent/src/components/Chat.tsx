@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react"
 import type { Message as MessageType } from "../hooks/useStream"
 import Message from "./Message.tsx"
-import TextArea from "./TextArea.tsx"
+import ChatInput from "./ChatInput.tsx"
 import { Sparkles, Globe, Zap, BookOpen } from "lucide-react"
 
 interface ChatProps {
@@ -136,7 +136,7 @@ export default function Chat({ messages, ask }: ChatProps) {
       {/* Input Area */}
       <div className="border-t border-slate-200/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 dark:border-slate-700/20 dark:bg-slate-800/80 dark:supports-[backdrop-filter]:bg-slate-800/80">
         <div className="w-full">
-          <TextArea onSend={ask} />
+          <ChatInput onSend={ask} />
         </div>
       </div>
     </div>

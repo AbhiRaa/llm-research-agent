@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY README.md .
 COPY start.sh .
+COPY test_server.py .
 RUN chmod +x start.sh
 
 ENV PYTHONPATH=/app/src

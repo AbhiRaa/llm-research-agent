@@ -1,5 +1,7 @@
 # Teamwork AI – LLM Research Agent (v1)
 
+🚀 **[Live Demo](https://llm-research-agent.abhira.dev)** 🚀
+
 A production‑style research assistant that answers any question in ≤ 80 words and **always** cites its sources.  
 Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT‑3.5‑Turbo when you export the relevant API keys.
 

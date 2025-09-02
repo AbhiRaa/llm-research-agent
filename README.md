@@ -10,37 +10,37 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 
 ## 1 – Architecture at a Glance
 
-                                                +-----------------------------+
-                                                |   CLI / HTTP / WS question  |
-                                                +--------------+--------------+
+                                             +-----------------------------+
+                                             |   CLI / HTTP / WS question  |
+                                             +--------------+--------------+
                                                             |
                                                             v
                 +------------------+           +-----------------------------+
                 |  Generate        |           |  Web Search (Bing / Serper) |
                 |  queries         |           +---------------+-------------+
                 +--------+---------+                           |   (1 h LRU)
-                            |                                     |  cache layer
-                            |                                     v
-                            |                        +------------+------------+
-                            |                        |        Redis            |
-                            |                        +------------+------------+
-                            |                                     ^
-                            |                                     |
-                            v                                     |
+                         |                                     |  cache layer
+                         |                                     v
+                         |                        +------------+------------+
+                         |                        |        Redis            |
+                         |                        +------------+------------+
+                         |                                     ^
+                         |                                     |
+                         v                                     |
                 +--------+---------+                           |
-                |  Reflect (slot‑   |<--------------------------+
+                |  Reflect (slot‑   |<-------------------------+
                 |  aware checker)   |
                 +--------+---------+
-                            |
-                            | need_more?  yes ──► (loops back to Web Search)
-                            | 
-                            | no
-                            v
+                         |
+                         | need_more?  yes ──► (loops back to Web Search)
+                         | 
+                         | no
+                         v
                 +--------+---------+
                 |   Synthesize     |  (≤ 80 words + space‑separated [n] cites)
                 +--------+---------+
-                            |
-                            v
+                         |
+                         v
                 +--------+---------+
                 |   JSON answer    |
                 +------------------+
@@ -192,7 +192,7 @@ Ask a question; the UI connects to ws://localhost:8001/api/ws and streams tokens
 
 ---
 
-## 11 - Bonus‑item implementation status
+## 11 - Bonus‑item implementation status
 
 | Bonus feature                                            | Implemented?              | Notes                                                                                                                                                                       |
 | -------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -112,7 +112,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-3">
-          <ul className="flex flex-col gap-1">
+          <ul className="list-clean flex flex-col gap-1">
             {sessions.map((s) => {
               const isActive = s.id === activeId
               const isEditing = editingId === s.id

@@ -283,6 +283,28 @@
   cursor: not-allowed;
 }
 
+/* Guarantee a usable touch target. Always ≥36px (a sane density floor);
+   ≥44px on coarse pointers (iOS HIG / WCAG 2.5.5). Used by header chrome
+   where Tailwind v4 + v3 directives don't emit h-9/w-9 reliably. */
+.touch-target {
+  min-height: 36px;
+  min-width: 36px;
+}
+@media (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Strip the default list disc/decimal from lists we render with our own
+   indices or styling (sidebar sessions, sources, pipeline stages). */
+.list-clean {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
 /* question card on the empty state — tactile riso lift */
 .q-card {
   background: var(--paper-2);

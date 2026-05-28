@@ -375,7 +375,7 @@ export default function Message({
               <h4 className="kicker mb-3" style={{ color: "var(--ink)" }}>
                 Sources · {citations.length}
               </h4>
-              <ul className="flex flex-col">
+              <ul className="list-clean flex flex-col">
                 {citations.map((c) => (
                   <li key={c.id} id={`source-${seq}-${c.id}`}>
                     <a

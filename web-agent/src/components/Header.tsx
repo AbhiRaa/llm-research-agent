@@ -55,7 +55,7 @@ export default function Header({
                 onClick={onToggleSidebar}
                 aria-label="Open sessions"
                 title="Sessions"
-                className="clear-btn ring-riso no-print mb-0.5 flex h-9 items-center justify-center px-2.5"
+                className="clear-btn ring-riso touch-target no-print mb-0.5 flex h-9 items-center justify-center px-2.5"
               >
                 <PanelLeft className="h-[15px] w-[15px]" strokeWidth={2} />
               </button>
@@ -138,7 +138,7 @@ export default function Header({
                     aria-label={`${label} theme`}
                     role="radio"
                     aria-checked={active}
-                    className="ring-riso relative z-10 flex h-9 w-9 items-center justify-center"
+                    className="ring-riso touch-target relative z-10 flex h-9 w-9 items-center justify-center"
                     style={{
                       color: active ? "var(--paper)" : "var(--ink-soft)",
                       transition: "color 0.2s ease",
@@ -165,7 +165,7 @@ export default function Header({
                   onClick={() => window.print()}
                   title="Print / save as PDF"
                   aria-label="Print this proof"
-                  className="clear-btn ring-riso flex h-9 items-center justify-center px-2.5"
+                  className="clear-btn ring-riso touch-target flex h-9 items-center justify-center px-2.5"
                 >
                   <Printer className="h-[15px] w-[15px]" strokeWidth={2} />
                 </button>
@@ -173,7 +173,7 @@ export default function Header({
                   onClick={onExport}
                   title="Export as Markdown"
                   aria-label="Export conversation as Markdown"
-                  className="clear-btn ring-riso flex h-9 items-center justify-center px-2.5"
+                  className="clear-btn ring-riso touch-target flex h-9 items-center justify-center px-2.5"
                 >
                   <Download className="h-[15px] w-[15px]" strokeWidth={2} />
                 </button>
@@ -181,7 +181,7 @@ export default function Header({
                   onClick={onClearChat}
                   title="Clear the record"
                   aria-label="Clear the record"
-                  className="clear-btn ring-riso flex h-9 items-center gap-2 px-3"
+                  className="clear-btn ring-riso touch-target flex h-9 items-center gap-2 px-3"
                 >
                   <Trash2 className="h-[15px] w-[15px]" strokeWidth={2} />
                   <span className="kicker hidden sm:inline">Clear</span>

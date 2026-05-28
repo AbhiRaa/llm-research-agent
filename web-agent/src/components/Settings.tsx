@@ -95,7 +95,7 @@ export default function Settings({
         aria-expanded={open}
         aria-label="Answer settings"
         title="Answer settings"
-        className="clear-btn ring-riso flex h-9 items-center gap-2 px-3"
+        className="clear-btn ring-riso touch-target flex h-9 items-center gap-2 px-3"
       >
         <SlidersHorizontal className="h-[15px] w-[15px]" strokeWidth={2} />
         <span className="kicker hidden sm:inline">

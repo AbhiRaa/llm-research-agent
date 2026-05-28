@@ -25,7 +25,7 @@ export default function Pipeline({ stages }: { stages: Stage[] }) {
           On press · researching
         </span>
       </div>
-      <ol className="flex flex-col gap-2.5 sm:flex-row sm:gap-2">
+      <ol className="list-clean flex flex-col gap-2.5 sm:flex-row sm:gap-2">
         {stages.map((s, i) => {
           const done = s.status === "done"
           const running = s.status === "running"

@@ -96,7 +96,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-5 py-4 sm:px-8 sm:py-5">
+    <div className="mx-auto w-full max-w-[1100px] px-3 py-4 sm:px-8 sm:py-5">
       <div className="flex items-stretch gap-3">
         <div
           className="paper-card flex flex-1 items-end gap-3 px-4 py-3 sm:px-5"

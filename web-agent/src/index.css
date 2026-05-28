@@ -268,9 +268,11 @@
     box-shadow 0.08s ease,
     background 0.15s ease;
 }
-.press-btn:hover {
-  transform: translate(1px, 1px);
-  box-shadow: 3px 3px 0 var(--ink);
+@media (hover: hover) {
+  .press-btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
 }
 .press-btn:active {
   transform: translate(4px, 4px);
@@ -315,9 +317,14 @@
     transform 0.12s ease,
     box-shadow 0.12s ease;
 }
-.q-card:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--flame);
+/* Hover only applies on devices that genuinely have hover (i.e. a mouse).
+   On iOS Safari, plain `:hover` sticks after a tap and leaves the flame
+   shadow stuck on every card the user touched. */
+@media (hover: hover) {
+  .q-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 var(--flame);
+  }
 }
 .q-card:active {
   transform: translate(2px, 2px);
@@ -337,10 +344,12 @@
     color 0.15s ease,
     border-color 0.15s ease;
 }
-.clear-btn:hover {
-  background: var(--flame);
-  color: var(--paper);
-  box-shadow: 3px 3px 0 var(--ink);
+@media (hover: hover) {
+  .clear-btn:hover {
+    background: var(--flame);
+    color: var(--paper);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
 }
 .clear-btn:active {
   transform: translate(3px, 3px);
@@ -362,8 +371,10 @@
 .dark .footnote {
   color: var(--flame);
 }
-.footnote:hover {
-  color: var(--blue);
+@media (hover: hover) {
+  .footnote:hover {
+    color: var(--blue);
+  }
 }
 
 /* drop cap on the lead answer */

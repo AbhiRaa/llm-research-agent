@@ -104,7 +104,7 @@ export default function Sidebar({
         <div className="px-5 pt-3">
           <button
             onClick={onNew}
-            className="press-btn ring-riso mono inline-flex h-9 w-full items-center justify-center gap-2 px-3 text-[0.72rem] uppercase tracking-widest"
+            className="press-btn ring-riso touch-target mono inline-flex h-9 w-full items-center justify-center gap-2 px-3 text-[0.72rem] uppercase tracking-widest"
             style={{ background: "var(--flame)", color: "var(--paper)" }}
           >
             <Plus className="h-4 w-4" strokeWidth={2.5} /> New session

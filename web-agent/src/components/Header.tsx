@@ -91,7 +91,7 @@ export default function Header({
           </div>
 
           {/* Status + controls */}
-          <div className="no-print flex items-center gap-3 sm:gap-4">
+          <div className="no-print flex items-center gap-2 sm:gap-4">
             <div
               className="mono hidden items-center gap-3 text-[0.7rem] md:flex"
               style={{ color: "var(--ink-mute)" }}
@@ -165,7 +165,7 @@ export default function Header({
                   onClick={() => window.print()}
                   title="Print / save as PDF"
                   aria-label="Print this proof"
-                  className="clear-btn ring-riso touch-target flex h-9 items-center justify-center px-2.5"
+                  className="clear-btn ring-riso touch-target hidden h-9 items-center justify-center px-2.5 sm:flex"
                 >
                   <Printer className="h-[15px] w-[15px]" strokeWidth={2} />
                 </button>
@@ -173,7 +173,7 @@ export default function Header({
                   onClick={onExport}
                   title="Export as Markdown"
                   aria-label="Export conversation as Markdown"
-                  className="clear-btn ring-riso touch-target flex h-9 items-center justify-center px-2.5"
+                  className="clear-btn ring-riso touch-target hidden h-9 items-center justify-center px-2.5 sm:flex"
                 >
                   <Download className="h-[15px] w-[15px]" strokeWidth={2} />
                 </button>

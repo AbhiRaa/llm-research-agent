@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor, Trash2, Download, Printer, PanelLeft } from "lucide-react"
+import { Moon, Sun, Monitor, PanelLeft } from "lucide-react"
 import Settings from "./Settings"
 import type { Controls } from "../hooks/useStream"
 
@@ -22,6 +22,23 @@ const edition = new Date().toLocaleDateString("en-US", {
   day: "2-digit",
 })
 
+// Cycle order: clicking the theme button advances light → dark → system → light.
+const THEME_NEXT: Record<Theme, Theme> = {
+  light: "dark",
+  dark: "system",
+  system: "light",
+}
+const THEME_ICON: Record<Theme, typeof Sun> = {
+  light: Sun,
+  dark: Moon,
+  system: Monitor,
+}
+const THEME_LABEL: Record<Theme, string> = {
+  light: "Light",
+  dark: "Dark",
+  system: "System",
+}
+
 export default function Header({
   theme,
   setTheme,
@@ -33,11 +50,8 @@ export default function Header({
   controls,
   setControls,
 }: HeaderProps) {
-  const modes: { id: Theme; icon: typeof Sun; label: string }[] = [
-    { id: "light", icon: Sun, label: "Light" },
-    { id: "dark", icon: Moon, label: "Dark" },
-    { id: "system", icon: Monitor, label: "System" },
-  ]
+  const ThemeIcon = THEME_ICON[theme]
+  const nextTheme = THEME_NEXT[theme]
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-[2px]">
@@ -49,7 +63,7 @@ export default function Header({
       <div className="mx-auto w-full max-w-[1180px] px-5 pt-4 sm:px-8">
         <div className="flex items-end justify-between gap-4 pb-2">
           {/* Masthead */}
-          <div className="flex items-end gap-3 sm:gap-4">
+          <div className="flex items-end gap-4 sm:gap-5">
             {onToggleSidebar && (
               <button
                 onClick={onToggleSidebar}
@@ -107,87 +121,28 @@ export default function Header({
               </span>
             </div>
 
-            <div
-              className="relative flex border-2"
-              style={{
-                borderColor: "var(--ink)",
-                background: "var(--paper-2)",
-                boxShadow: "3px 3px 0 var(--blue)",
-              }}
-              role="radiogroup"
-              aria-label="Color theme"
+            {/* Single cycling theme button: icon shows current state, click
+                advances to the next one. Far less visual noise than the
+                previous 3-cell segmented control. */}
+            <button
+              onClick={() => setTheme(nextTheme)}
+              title={`Theme: ${THEME_LABEL[theme]} (tap for ${THEME_LABEL[nextTheme]})`}
+              aria-label={`Theme: ${THEME_LABEL[theme]}. Tap to switch to ${THEME_LABEL[nextTheme]}.`}
+              className="clear-btn ring-riso touch-target flex h-9 items-center justify-center px-2.5"
             >
-              {/* sliding ink plate */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute left-0 top-0 h-full"
-                style={{
-                  width: `${100 / modes.length}%`,
-                  transform: `translateX(${modes.findIndex((m) => m.id === theme) * 100}%)`,
-                  background: "var(--ink)",
-                  transition: "transform 0.32s cubic-bezier(0.34, 1.4, 0.5, 1)",
-                }}
-              />
-              {modes.map(({ id, icon: Icon, label }) => {
-                const active = theme === id
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setTheme(id)}
-                    title={`${label} theme`}
-                    aria-label={`${label} theme`}
-                    role="radio"
-                    aria-checked={active}
-                    className="ring-riso touch-target relative z-10 flex h-9 w-9 items-center justify-center"
-                    style={{
-                      color: active ? "var(--paper)" : "var(--ink-soft)",
-                      transition: "color 0.2s ease",
-                    }}
-                  >
-                    <Icon
-                      className="h-[15px] w-[15px]"
-                      strokeWidth={2.25}
-                      style={{
-                        transform: active ? "scale(1.08)" : "scale(1)",
-                        transition: "transform 0.2s cubic-bezier(0.34, 1.4, 0.5, 1)",
-                      }}
-                    />
-                  </button>
-                )
-              })}
-            </div>
+              <ThemeIcon className="h-[15px] w-[15px]" strokeWidth={2.25} />
+            </button>
 
-            <Settings controls={controls} setControls={setControls} />
-
-            {showClearButton && (
-              <>
-                <button
-                  onClick={() => window.print()}
-                  title="Print / save as PDF"
-                  aria-label="Print this proof"
-                  className="clear-btn ring-riso touch-target hidden h-9 items-center justify-center px-2.5 sm:flex"
-                >
-                  <Printer className="h-[15px] w-[15px]" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={onExport}
-                  title="Export as Markdown"
-                  aria-label="Export conversation as Markdown"
-                  className="clear-btn ring-riso touch-target hidden h-9 items-center justify-center px-2.5 sm:flex"
-                >
-                  <Download className="h-[15px] w-[15px]" strokeWidth={2} />
-                </button>
-                <button
-                  onClick={onClearChat}
-                  title="Clear the record"
-                  aria-label="Clear the record"
-                  className="clear-btn ring-riso touch-target flex h-9 items-center gap-2 px-3"
-                >
-                  <Trash2 className="h-[15px] w-[15px]" strokeWidth={2} />
-                  <span className="kicker hidden sm:inline">Clear</span>
-                </button>
-              </>
-            )}
+            {/* Print / Export / Clear live inside Settings now (Page actions)
+                so the header stays minimal and they're reachable on every
+                viewport. */}
+            <Settings
+              controls={controls}
+              setControls={setControls}
+              onExport={onExport}
+              onClearChat={onClearChat}
+              showClear={showClearButton}
+            />
           </div>
         </div>
         <hr className="rule-double" />

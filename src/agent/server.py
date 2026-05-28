@@ -117,6 +117,7 @@ def _controls(params) -> dict:
         "max_sources": _int("max_sources", 3, 1, 5),
         "recency": params.get("recency") if params.get("recency") in ("day", "week", "month") else None,
         "fmt": fmt if fmt in ("prose", "bullets", "tldr") else "prose",
+        "nocache": str(params.get("nocache", "")).lower() in ("1", "true", "yes"),
     }
 
 

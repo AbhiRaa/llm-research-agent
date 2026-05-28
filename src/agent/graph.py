@@ -134,6 +134,7 @@ async def astream_answer(
     max_sources: int = 3,
     recency: Optional[str] = None,
     fmt: str = "prose",
+    nocache: bool = False,
 ) -> AsyncIterator[Dict[str, Any]]:
     """Run the pipeline and stream it as events for SSE/WebSocket.
 
@@ -142,6 +143,10 @@ async def astream_answer(
     ``followups`` (suggested next questions), ``done`` (answer+citations+trace),
     ``error``. Honours user controls (length / sources / recency / format) and
     serves a control-aware cached answer instantly when one exists.
+
+    ``nocache=True`` (used by the Regenerate action) skips the cache *read*
+    so the pipeline is genuinely re-run; the fresh answer is still written
+    to cache at the end so the next normal ask returns it instantly.
     """
     import re as _re
     from opentelemetry import trace as _trace
@@ -154,7 +159,7 @@ async def astream_answer(
     key = _cache_key(question, max_words, max_sources, recency, fmt)
 
     try:
-        cached = await answer_cache_get(key)
+        cached = None if nocache else await answer_cache_get(key)
         if cached and cached.get("answer"):
             for name in ("generate", "search", "reflect", "synthesize"):
                 yield {"type": "stage", "name": name, "status": "done"}

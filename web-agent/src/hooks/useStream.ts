@@ -217,7 +217,12 @@ export default function useStream() {
   }, [])
 
   const run = useCallback(
-    (question: string, history: string, assistantId: string) => {
+    (
+      question: string,
+      history: string,
+      assistantId: string,
+      opts: { nocache?: boolean } = {},
+    ) => {
       const base = import.meta.env.VITE_API_BASE_URL || ""
       const c = controlsRef.current
       const params = new URLSearchParams({
@@ -228,6 +233,7 @@ export default function useStream() {
       })
       if (history) params.set("history", history)
       if (c.recency !== "any") params.set("recency", c.recency)
+      if (opts.nocache) params.set("nocache", "1")
       const es = new EventSource(`${base}/api/stream?${params.toString()}`)
       esRef.current = es
       activeAssistantRef.current = assistantId
@@ -327,7 +333,7 @@ export default function useStream() {
   )
 
   const ask = useCallback(
-    (question: string) => {
+    (question: string, opts: { nocache?: boolean } = {}) => {
       if (isLoading) return
       const q = question.trim()
       if (!q) return
@@ -354,7 +360,7 @@ export default function useStream() {
         history = buildHistory(prev)
         return [...prev, userMsg, assistantMsg]
       })
-      run(q, history, assistantId)
+      run(q, history, assistantId, opts)
     },
     [isLoading, run],
   )
@@ -383,7 +389,9 @@ export default function useStream() {
     const idx = messages.length - 1 - lastUserIdx
     const q = messages[idx].text
     setMessages(messages.slice(0, idx)) // also removes the user msg; ask re-adds it
-    setTimeout(() => ask(q), 0)
+    // Bypass the cache so the user sees a genuinely fresh research run instead
+    // of the same answer flashing back with a `cached` badge.
+    setTimeout(() => ask(q, { nocache: true }), 0)
   }, [isLoading, messages, ask])
 
   const clearMessages = useCallback(() => {

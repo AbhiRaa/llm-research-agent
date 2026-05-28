@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react"
-import { SlidersHorizontal, Minus, Plus } from "lucide-react"
+import {
+  SlidersHorizontal,
+  Minus,
+  Plus,
+  Printer,
+  Download,
+  Trash2,
+} from "lucide-react"
 import type { Controls, AnswerFormat, Recency } from "../hooks/useStream"
 
 const LENGTHS: [string, number][] = [
@@ -68,13 +75,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
+interface SettingsProps {
+  controls: Controls
+  setControls: (c: Controls) => void
+  onExport?: () => void
+  onClearChat?: () => void
+  showClear?: boolean
+}
+
 export default function Settings({
   controls,
   setControls,
-}: {
-  controls: Controls
-  setControls: (c: Controls) => void
-}) {
+  onExport,
+  onClearChat,
+  showClear = false,
+}: SettingsProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -112,6 +127,8 @@ export default function Settings({
             right: 0,
             marginTop: "0.5rem",
             width: "min(18rem, calc(100vw - 2.5rem))",
+            maxHeight: "min(36rem, calc(100vh - 6rem))",
+            overflowY: "auto",
             zIndex: 50,
             boxShadow: "5px 5px 0 var(--blue)",
           }}
@@ -184,9 +201,64 @@ export default function Settings({
                 onChange={(v) => set({ recency: v })}
               />
             </Row>
+
+            {/* Page actions — Print / Export / Clear live here so the header
+                stays minimal and these stay reachable on every viewport. */}
+            <hr
+              className="rule-double mt-1"
+              style={{ borderColor: "var(--ink)" }}
+            />
+            <Row label="Page actions">
+              <div className="flex flex-col gap-2">
+                <ActionButton
+                  icon={<Printer className="h-[15px] w-[15px]" strokeWidth={2.25} />}
+                  label="Print proof"
+                  onClick={() => window.print()}
+                />
+                {onExport && (
+                  <ActionButton
+                    icon={<Download className="h-[15px] w-[15px]" strokeWidth={2.25} />}
+                    label="Export as Markdown"
+                    onClick={onExport}
+                  />
+                )}
+                {showClear && onClearChat && (
+                  <ActionButton
+                    icon={<Trash2 className="h-[15px] w-[15px]" strokeWidth={2.25} />}
+                    label="Clear conversation"
+                    onClick={onClearChat}
+                    danger
+                  />
+                )}
+              </div>
+            </Row>
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+/** A compact row button matching the riso clear-btn treatment. */
+function ActionButton({
+  icon,
+  label,
+  onClick,
+  danger = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+  danger?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="clear-btn ring-riso touch-target mono flex h-9 w-full items-center gap-2 px-3 text-[0.72rem] uppercase tracking-widest"
+      style={{ color: danger ? "var(--flame)" : "var(--ink)" }}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
   )
 }

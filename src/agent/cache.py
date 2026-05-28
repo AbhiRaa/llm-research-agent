@@ -130,3 +130,60 @@ def cached(ttl: int = 300):
         return _inner
 
     return _wrap
+
+
+# ───────────────────────── full-answer cache ──────────────────────────────
+# Cache the *final* answer keyed by question so repeated asks are instant and
+# free. No-ops transparently when Redis is unavailable.
+def _answer_key(question: str) -> str:
+    return "answer:" + question.strip().lower()
+
+
+async def answer_cache_get(question: str) -> Any | None:
+    r = await get_redis()
+    if not r:
+        return None
+    raw = await r.get(_answer_key(question))
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+async def answer_cache_set(question: str, payload: Any, ttl: int = 3600) -> None:
+    r = await get_redis()
+    if not r:
+        return
+    try:
+        await r.set(_answer_key(question), json.dumps(payload), ex=ttl)
+    except TypeError:
+        pass
+
+
+# ───────────────────────── shareable permalinks ────────────────────────────
+# Store a published answer under a short opaque id so anyone can open the
+# /share/<id> link and see a read-only "proof". TTL defaults to 7 days.
+async def share_get(sid: str) -> Any | None:
+    r = await get_redis()
+    if not r:
+        return None
+    raw = await r.get(f"share:{sid}")
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+async def share_set(sid: str, payload: Any, ttl: int = 7 * 24 * 3600) -> bool:
+    r = await get_redis()
+    if not r:
+        return False
+    try:
+        await r.set(f"share:{sid}", json.dumps(payload), ex=ttl)
+        return True
+    except TypeError:
+        return False

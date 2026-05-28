@@ -6,159 +6,81 @@
 @tailwind components;
 @tailwind utilities;
 
-/* custom scrollbars */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, rgba(139, 92, 246, 0.3), rgba(79, 70, 229, 0.3));
-  border-radius: 1rem;
-  border: 2px solid transparent;
-  background-clip: content-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, rgba(139, 92, 246, 0.5), rgba(79, 70, 229, 0.5));
-}
-
-/* Enhanced glass morphism support */
-@supports (backdrop-filter: blur(20px)) {
-  .backdrop-blur-xl {
-    backdrop-filter: blur(20px);
-  }
-  .backdrop-blur-sm {
-    backdrop-filter: blur(8px);
-  }
-}
+/* ============================================================
+   PROOF — Risograph duotone design system
+   cobalt × flame, printed on newsprint. grain + halftone + overprint.
+   ============================================================ */
 
 :root {
-  font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  line-height: 1.6;
-  font-weight: 400;
+  /* ---- type ---- */
+  --font-display: "Bricolage Grotesque", "Arial Narrow", sans-serif;
+  --font-body: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* ---- newsprint (light) ---- */
+  --paper: #ede7d6;
+  --paper-2: #f4efe1;
+  --paper-3: #e3dac3;
+  --ink: #1a1a22;
+  --ink-soft: #45454f;
+  --ink-mute: #76726a;
+  --rule: #c9bfa6;
+  --blue: #2438d6;
+  --blue-deep: #1a28a6;
+  --flame: #ff4d1c;
+  --flame-deep: #de3a0c;
+  --shadow: #1a1a22;
+  --grain-opacity: 0.07;
+  --grain-blend: multiply;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  letter-spacing: -0.01em;
-  
-  --text-color: #1f2937;
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* shadcn compatibility (mapped to riso) */
+  --radius: 0.25rem;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-2);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-2);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--paper-3);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-3);
+  --muted-foreground: var(--ink-mute);
+  --accent: var(--flame);
+  --accent-foreground: var(--paper);
+  --destructive: var(--flame-deep);
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: var(--blue);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  padding: 0 16px;
-}
-
-@media (min-width: 640px) {
-  body {
-    padding: 0 24px;
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    padding: 0 32px;
-  }
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.dark {
+  /* ---- night press (dark) ---- */
+  --paper: #161419;
+  --paper-2: #1f1c24;
+  --paper-3: #100e13;
+  --ink: #ece6d8;
+  --ink-soft: #bcb5a5;
+  --ink-mute: #8a8479;
+  --rule: #353039;
+  --blue: #6f7dff;
+  --blue-deep: #4d5bff;
+  --flame: #ff6a3d;
+  --flame-deep: #ff8a5f;
+  --shadow: #000000;
+  --grain-opacity: 0.11;
+  --grain-blend: overlay;
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius));
+  --radius-md: calc(var(--radius) + 2px);
+  --radius-lg: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -171,61 +93,404 @@ button:focus-visible {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-.dark {
-  --text-color: #ffffff;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--rule);
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+    letter-spacing: 0.005em;
+    overflow-x: hidden;
+  }
+  ::selection {
+    background: var(--flame);
+    color: var(--paper);
+  }
+  /* form reset — guards against UA system colors (e.g. grey ButtonFace
+     in dark mode) when Tailwind preflight's button reset doesn't apply */
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+  }
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+}
+
+/* ---- scrollbar ---- */
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: var(--paper-3);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--blue);
+  border: 3px solid var(--paper-3);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--flame);
+}
+
+/* ============================================================
+   TEXTURES
+   ============================================================ */
+
+/* full-screen film grain */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: var(--grain-blend);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* halftone dot field — set color via --dot */
+.halftone {
+  --dot: var(--ink);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.5px);
+  background-size: 7px 7px;
+}
+.halftone-blue {
+  --dot: var(--blue);
+}
+.halftone-flame {
+  --dot: var(--flame);
+}
+
+/* overprint: where two inks meet, multiply */
+.overprint {
+  mix-blend-mode: multiply;
+}
+.dark .overprint {
+  mix-blend-mode: screen;
+}
+
+/* ============================================================
+   PRINT FURNITURE
+   ============================================================ */
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* double rule, like a newspaper masthead */
+.rule-double {
+  border: none;
+  border-top: 3px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  height: 0;
+  margin: 0 0 5px;
+}
+
+/* misregistered headline: flame ghost behind ink */
+.riso-title {
+  position: relative;
+  color: var(--ink);
+  display: inline-block;
+}
+.riso-title::before {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--flame);
+  transform: translate(0.045em, 0.05em);
+  mix-blend-mode: multiply;
+  z-index: -1;
+  animation: ghost-settle 0.9s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+.dark .riso-title::before {
+  mix-blend-mode: screen;
+}
+
+/* paper card with hard offset shadow */
+.paper-card {
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  box-shadow: 7px 7px 0 var(--blue);
+  border-radius: var(--radius);
+}
+.paper-card-flame {
+  box-shadow: 7px 7px 0 var(--flame);
+}
+
+/* pressable button — shadow collapses on press */
+.press-btn {
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    background 0.15s ease;
+}
+.press-btn:hover {
+  transform: translate(1px, 1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.press-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.press-btn:disabled {
+  opacity: 0.4;
+  box-shadow: 4px 4px 0 var(--ink);
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* question card on the empty state — tactile riso lift */
+.q-card {
+  background: var(--paper-2);
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--blue);
+  border-radius: var(--radius);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.q-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--flame);
+}
+.q-card:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--flame);
+}
+
+/* clear / destructive button — calm outline at rest, flame on intent */
+.clear-btn {
+  border: 2px solid var(--ink);
+  background: var(--paper-2);
+  color: var(--ink-soft);
+  box-shadow: 3px 3px 0 var(--blue);
+  transition:
+    transform 0.1s ease,
+    box-shadow 0.1s ease,
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.clear-btn:hover {
+  background: var(--flame);
+  color: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.clear-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 var(--ink);
+}
+
+/* footnote citation marker */
+.footnote {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.62em;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--flame-deep);
+  padding: 0 0.12em;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+.dark .footnote {
+  color: var(--flame);
+}
+.footnote:hover {
+  color: var(--blue);
+}
+
+/* drop cap on the lead answer */
+.lead::first-letter {
+  font-family: var(--font-display);
+  font-weight: 800;
+  float: left;
+  font-size: 3.1em;
+  line-height: 0.74;
+  padding: 0.06em 0.12em 0 0;
+  color: var(--flame);
+}
+
+/* focus ring, riso style */
+.ring-riso:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   ANIMATION
+   ============================================================ */
+
+@keyframes ghost-settle {
+  0% {
+    transform: translate(0.32em, 0.34em);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0.045em, 0.05em);
+    opacity: 1;
+  }
+}
+
+@keyframes riso-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.riso-in {
+  animation: riso-in 0.6s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+@keyframes ink-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.caret::after {
+  content: "▍";
+  color: var(--flame);
+  animation: ink-blink 1s steps(1) infinite;
+  margin-left: 0.05em;
+}
+
+@keyframes roller {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 28px 0;
+  }
+}
+.roller {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--flame) 0 8px,
+    var(--blue) 8px 16px
+  );
+  background-size: 28px 28px;
+  animation: roller 0.7s linear infinite;
+}
+
+@keyframes stage-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.stage-active {
+  animation: stage-pulse 0.9s ease-in-out infinite;
+}
+
+/* ============================================================
+   PRINT — "print this proof" renders a clean editorial document
+   ============================================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .grain {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+  .paper-card,
+  article {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+    break-inside: avoid;
+  }
+  .riso-title::before {
+    display: none !important; /* drop the misregistered ghost */
+  }
+  .lead::first-letter {
+    color: #000 !important;
+  }
+  .footnote {
+    color: #000 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .roller {
+    animation: none;
   }
 }

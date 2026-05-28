@@ -11,7 +11,7 @@ def test_no_docs(monkeypatch):
     # Monkeypatch web_search to always return []
     from agent import nodes
 
-    async def empty(_):
+    async def empty(*_args, **_kwargs):
         return []
 
     # Force *nodes.web_search* to return an empty list

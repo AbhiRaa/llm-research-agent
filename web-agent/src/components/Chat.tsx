@@ -1,143 +1,175 @@
-import { useRef, useEffect } from "react"
+import { useEffect, useRef } from "react"
 import type { Message as MessageType } from "../hooks/useStream"
-import Message from "./Message.tsx"
-import ChatInput from "./ChatInput.tsx"
-import { Sparkles, Globe, Zap, BookOpen } from "lucide-react"
+import Message from "./Message"
+import ChatInput from "./ChatInput"
 
 interface ChatProps {
   messages: MessageType[]
   ask: (question: string) => void
+  isLoading: boolean
+  onStop: () => void
+  onRegenerate: () => void
 }
 
-export default function Chat({ messages, ask }: ChatProps) {
+const SAMPLES: { q: string; tag: string }[] = [
+  { q: "What were the biggest announcements at the latest Apple event?", tag: "Tech" },
+  { q: "Who is leading the 2026 Formula 1 championship?", tag: "Sport" },
+  { q: "Explain the most recent breakthrough in fusion energy.", tag: "Science" },
+  { q: "What's moving global markets this week?", tag: "Markets" },
+  { q: "Summarize the newest frontier AI model and what it can do.", tag: "AI" },
+  { q: "What's the latest on NASA's Artemis Moon programme?", tag: "Space" },
+]
+
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+}
+
+export default function Chat({
+  messages,
+  ask,
+  isLoading,
+  onStop,
+  onRegenerate,
+}: ChatProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const pinnedRef = useRef(true)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [])
+
+  useEffect(() => {
+    if (pinnedRef.current) bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  const lastId = messages[messages.length - 1]?.id
+  let queryNo = 0
+
   return (
-    <div className="h-full flex flex-col">
-      {messages.length === 0 ? (
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex min-h-full flex-col items-center justify-center py-12 sm:py-20">
-            <div className="w-full">
-            {/* Hero Section */}
-            <div className="mb-12 text-center sm:mb-16">
-              <h1 className="mb-4 text-5xl font-bold tracking-tight sm:mb-6 sm:text-7xl lg:text-8xl text-slate-900 dark:text-white">
-                Where knowledge begins
-              </h1>
-              <p className="mx-auto text-xl leading-relaxed text-slate-600 dark:text-slate-300 sm:text-2xl">
-                Ask me anything and get comprehensive, well-sourced answers powered by advanced AI search capabilities.
-              </p>
+    <div className="flex h-full flex-col">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {messages.length === 0 ? (
+          /* ---------------------------------------- POSTER / EMPTY STATE */
+          <div className="mx-auto w-full max-w-[1100px] px-5 py-10 sm:px-8 sm:py-14">
+            <p className="kicker mb-5" style={{ color: "var(--blue)" }}>
+              ◆ Generate · Search · Reflect · Synthesize
+            </p>
+            <h2
+              className="riso-title text-[3.4rem] leading-[0.9] sm:text-[5.2rem] lg:text-[6rem]"
+              data-text="SOURCED."
+            >
+              SOURCED.
+            </h2>
+            <p
+              className="mt-6 max-w-2xl text-xl leading-relaxed"
+              style={{ fontFamily: "var(--font-body)", color: "var(--ink-soft)" }}
+            >
+              Ask anything. PROOF researches the open web, reflects on what it finds,
+              and answers in <em>under eighty words</em> — every claim set in print and{" "}
+              <span style={{ color: "var(--flame)", fontWeight: 600 }}>
+                backed by a citation
+              </span>
+              .
+            </p>
+
+            {/* fresh question cards */}
+            <div className="mt-10 flex items-center gap-3">
+              <span className="kicker" style={{ color: "var(--ink)" }}>
+                Start the run
+              </span>
+              <span className="h-[2px] flex-1" style={{ background: "var(--rule)" }} />
             </div>
-
-            {/* Example Questions */}
-            <div className="mb-8 sm:mb-12">
-              <h2 className="mb-6 text-center text-lg font-semibold text-slate-700 dark:text-slate-300 sm:mb-8 sm:text-xl">
-                Try asking about
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:gap-6">
-                <button 
-                  onClick={() => ask("What are the latest developments in AI technology?")}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/30 bg-white/80 backdrop-blur-sm p-8 text-left shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:bg-white/90 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 dark:border-slate-600/30 dark:bg-slate-700/80 dark:ring-white/10 dark:hover:bg-slate-700/90"
+            <div
+              className="mt-5"
+              style={{
+                display: "grid",
+                gap: "1rem",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+              }}
+            >
+              {SAMPLES.map((s, i) => (
+                <button
+                  key={s.q}
+                  onClick={() => ask(s.q)}
+                  className="q-card ring-riso group flex flex-col p-5 text-left"
+                  style={{ animationDelay: `${i * 0.05}s` }}
                 >
-                  <div className="relative z-10">
-                    <div className="mb-6 flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 shadow-lg ring-1 ring-blue-500/20">
-                        <Sparkles className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">AI Technology</h3>
-                    </div>
-                    <p className="text-base font-medium text-slate-600 dark:text-slate-300">
-                      Latest developments in artificial intelligence
-                    </p>
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="kicker" style={{ color: "var(--flame)" }}>
+                      {s.tag}
+                    </span>
+                    <span
+                      className="mono text-lg transition-transform group-hover:translate-x-1"
+                      style={{ color: "var(--blue)" }}
+                      aria-hidden="true"
+                    >
+                      →
+                    </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <span
+                    className="text-lg leading-snug"
+                    style={{ fontFamily: "var(--font-body)", color: "var(--ink)" }}
+                  >
+                    {s.q}
+                  </span>
                 </button>
-
-                <button 
-                  onClick={() => ask("Explain quantum computing in simple terms")}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/30 bg-white/80 backdrop-blur-sm p-8 text-left shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:bg-white/90 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 dark:border-slate-600/30 dark:bg-slate-700/80 dark:ring-white/10 dark:hover:bg-slate-700/90"
-                >
-                  <div className="relative z-10">
-                    <div className="mb-6 flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 shadow-lg ring-1 ring-purple-500/20">
-                        <Zap className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Quantum Computing</h3>
-                    </div>
-                    <p className="text-base font-medium text-slate-600 dark:text-slate-300">
-                      Complex concepts explained simply
-                    </p>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                </button>
-
-                <button 
-                  onClick={() => ask("What's happening in global markets today?")}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/30 bg-white/80 backdrop-blur-sm p-8 text-left shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:bg-white/90 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 dark:border-slate-600/30 dark:bg-slate-700/80 dark:ring-white/10 dark:hover:bg-slate-700/90"
-                >
-                  <div className="relative z-10">
-                    <div className="mb-6 flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 via-green-600 to-emerald-600 shadow-lg ring-1 ring-green-500/20">
-                        <Globe className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Global Markets</h3>
-                    </div>
-                    <p className="text-base font-medium text-slate-600 dark:text-slate-300">
-                      Current financial and economic trends
-                    </p>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                </button>
-
-                <button 
-                  onClick={() => ask("How does renewable energy compare to fossil fuels?")}
-                  className="group relative overflow-hidden rounded-2xl border border-slate-200/30 bg-white/80 backdrop-blur-sm p-8 text-left shadow-xl ring-1 ring-black/5 transition-all duration-300 hover:bg-white/90 hover:shadow-2xl hover:scale-[1.02] hover:-translate-y-1 dark:border-slate-600/30 dark:bg-slate-700/80 dark:ring-white/10 dark:hover:bg-slate-700/90"
-                >
-                  <div className="relative z-10">
-                    <div className="mb-6 flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 shadow-lg ring-1 ring-emerald-500/20">
-                        <BookOpen className="h-6 w-6 text-white" />
-                      </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Renewable Energy</h3>
-                    </div>
-                    <p className="text-base font-medium text-slate-600 dark:text-slate-300">
-                      Environmental and sustainability insights
-                    </p>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                </button>
-              </div>
-            </div>
+              ))}
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto pt-8 sm:pt-12">
-          <div className="w-full pb-8">
-            {messages.map((m, index) => (
-              <div key={m.id}>
-                {/* Add large gap between conversation threads */}
-                {index > 0 && m.role === 'user' && (
-                  <div className="py-16 sm:py-24">
-                    <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-200/50 to-transparent dark:via-slate-700/50"></div>
-                  </div>
-                )}
-                <Message role={m.role} text={m.text} citations={m.citations} />
-              </div>
-            ))}
-            <div ref={bottomRef} />
+        ) : (
+          /* ---------------------------------------- CONVERSATION */
+          <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-10 px-5 py-10 sm:px-8 sm:py-14">
+            {messages.map((m, idx) => {
+              if (m.role === "user") queryNo += 1
+              const pairedQuestion =
+                m.role === "assistant" && idx > 0 && messages[idx - 1].role === "user"
+                  ? messages[idx - 1].text
+                  : undefined
+              return (
+                <Message
+                  key={m.id}
+                  pairedQuestion={pairedQuestion}
+                  role={m.role}
+                  text={m.text}
+                  citations={m.citations}
+                  stages={m.stages}
+                  isStreaming={m.isStreaming}
+                  cached={m.cached}
+                  stopped={m.stopped}
+                  error={m.error}
+                  queries={m.queries}
+                  coverage={m.coverage}
+                  followups={m.followups}
+                  traceId={m.traceId}
+                  seq={queryNo}
+                  time={m.role === "user" ? fmtTime(m.timestamp) : undefined}
+                  isLast={m.id === lastId && !isLoading}
+                  onRegenerate={onRegenerate}
+                  onFollowup={ask}
+                />
+              )
+            })}
+            <div ref={bottomRef} className="h-2" />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Input Area */}
-      <div className="border-t border-slate-200/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 dark:border-slate-700/20 dark:bg-slate-800/80 dark:supports-[backdrop-filter]:bg-slate-800/80">
-        <div className="w-full">
-          <ChatInput onSend={ask} />
-        </div>
+      <div
+        className="no-print shrink-0"
+        style={{ borderTop: "3px solid var(--ink)", background: "var(--paper)" }}
+      >
+        <ChatInput onSend={ask} isLoading={isLoading} onStop={onStop} />
       </div>
     </div>
   )

@@ -8,7 +8,9 @@
     "build": "vite build",
     "build-with-types": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.9",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@tailwindcss/vite": "^4.1.11",
     "@types/node": "^24.0.14",

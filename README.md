@@ -6,7 +6,9 @@ A production‑style research assistant that answers any question in ≤ 80�
 Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT‑3.5‑Turbo when you export the relevant API keys.
 
 > **Pipeline** – Generate → Search → Reflect (≤ 2 loops) → Synthesize  
-> **Stack** – Python 3.11 · Docker · LangGraph · OpenAI API · FastAPI · Redis (cache) · OpenTelemetry · Prometheus · Serper/Bing
+> **Stack** – Python 3.11 · Docker · LangGraph · OpenAI API · FastAPI · Redis (cache) · OpenTelemetry · Prometheus · Jaeger · Serper/Bing
+
+> **v3 highlights** — real token streaming over SSE/WS · live pipeline-stage events · multi-turn memory · markdown answers with footnote citations + favicons · full-answer cache · per-IP rate limiting · gated `/debug` · Jaeger traces · the **PROOF** Risograph UI.
 
 ---
 
@@ -84,6 +86,19 @@ Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT�
 | **SSE**       | `GET /api/stream?question=…` | `curl -N "http://localhost:8001/api/stream?question=Who+invented+Docker"` |
 | **WebSocket** | `ws://…/api/ws?question=…`   | `npx wscat -c "ws://localhost:8001/api/ws?question=What+is+RAG"`          |
 
+**Real token streaming.** Both endpoints stream the agent's progress as discrete events (SSE `event:` frames / raw JSON over WS): `stage` (live pipeline phase, with doc counts), `token` (a synthesize token as the model emits it), `done` (`{answer, citations, cached}`), and `error` (graceful, user-safe). Both accept an optional `&history=...` param (recent turns) for **multi-turn follow-ups**. Repeat questions are served from a **full-answer cache** (`cached:true`); a per-IP **rate limit** (`RATE_LIMIT_PER_MIN`, default 30) returns HTTP 429 when exceeded; `/debug` is disabled unless `AGENT_DEBUG=1`.
+
+**Answer controls.** A composer settings popover lets the reader tune each run, sent as query params and honoured end-to-end (and folded into the cache key):
+`max_words` (Brief 40 / Standard 80 / Detailed 150, hard-enforced) · `max_sources` (1–5, fetched + cited) · `fmt` (prose / bullets / tldr) · `recency` (any / day / week / month → Serper `tbs=qdr:*`).
+
+**Transparency.** Each answer surfaces a **coverage** bar (which required facts the evidence covered, from the Reflect step), a **show-the-work** panel listing the real search queries (and a Jaeger trace link when `VITE_JAEGER_URL` is set), source **favicons + hover snippets**, and 2 suggested **follow-up** questions. A **Print proof** action renders the conversation as a clean editorial PDF.
+
+**Trust & ergonomics.** Each answer's `[n]` markers are validated against real source URLs and renumbered (orphan markers dropped, sources deduped). **Optional Bearer/API-key auth** (`API_KEYS` env, header `Authorization: Bearer …` or `?api_key=…` query param) bumps the rate limit from 30/min to 120/min and shows up on `GET /api/usage`. **Shareable permalinks** via `POST /api/share` (returns an opaque id) + `GET /api/share/{id}`; the frontend renders read-only proofs at `/share/<id>`. The **Archive sidebar** holds multiple sessions in localStorage with rename/delete. Composer **mic** (Web Speech API) and per-answer **Listen** button (`speechSynthesis`) appear where supported.
+
+**Single-deploy.** The Dockerfile is multi-stage: a node stage builds the SPA and the python stage mounts it at `/` via `StaticFiles` with an SPA fallback, so one container serves both the API and the UI from one URL.
+
+**CI + E2E.** GitHub Actions (`.github/workflows/ci.yml`) runs `pytest` and the frontend lint+build on every push. A Playwright smoke E2E lives in `web-agent/e2e/` — install once with `npm run e2e:install`, then `npm run e2e`.
+
 ---
 
 ## 4 – Redis Cache Cheat‑sheet
@@ -147,7 +162,7 @@ Ask a question; the UI connects to ws://localhost:8001/api/ws and streams tokens
 | Concern                    | Decision                                                                                                               |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Deterministic CI**       | Stub LLM & mock search guarantee tests run without internet or keys.                                                   |
-| **Retry & latency budget** | 1 s timeout wrapper + exponential back‑off (2 retries) around search; LLM calls inherited from LangChain.              |
+| **Retry & latency budget** | 8 s timeout wrapper + exponential back‑off (2 retries) around search; LLM calls inherited from LangChain.              |
 | **Caching**                | JSON‑serialisable wrapper stores LangChain `Document`s in Redis (`agent.cache`).                                       |
 | **Observability**          | OTel spans for each LangGraph node; Prom counters + histograms; both safe in pytest/CI.                                |
 | **Extensibility**          | Graph edges & routing are data‑driven → easy to insert Embedding/RAG or multiple Reflect passes.                       |
@@ -198,10 +213,10 @@ Ask a question; the UI connects to ws://localhost:8001/api/ws and streams tokens
 
 | Bonus feature                                            | Implemented?              | Notes                                                                                                                                                                       |
 | -------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 📡 **SSE / WebSocket streaming**                         | ✅ Done                    | `src/agent/server.py` exposes `/api/stream` (SSE) and `/api/ws` (WS) that stream incremental *token* and *done* events.                                                     |
+| 📡 **SSE / WebSocket streaming**                         | ✅ Done                    | `src/agent/server.py` exposes `/api/stream` (SSE) and `/api/ws` (WS) that stream **real** LLM `token` events plus live `stage` (pipeline phase), `done` and `error` events. Multi-turn `history`, full-answer cache, and per-IP rate limiting included.                                                     |
 | ♻️ **Redis LRU cache for query results**                 | ✅ Done                    | `@cached` decorator in `src/agent/cache.py` stores JSON‑serialisable results with a TTL (default 1 h). Becomes a no‑op when `REDIS_URL` is unset or Redis is unreachable.   |
 | 📈 **OpenTelemetry traces + Prometheus metrics**         | ✅ Done                    | `src/agent/observability.py` initialises tracing (console + optional OTLP exporter) and two Prometheus instruments (`agent_requests_total`, `agent_phase_latency_seconds`). |
-| 💬 **Minimal React/Vite front‑end**                      | ✅ Done                    | `web/` (or `ui/`) folder serves a Vite‑built chat UI that connects via the WS endpoint; start with `npm run dev`.                                                           |
+| 💬 **Minimal React/Vite front‑end**                      | ✅ Done                    | `web/` (or `ui/`) `web-agent/` serves **PROOF**, a Risograph/editorial chat UI (real-time token streaming, markdown answers, source favicons, conversation persistence, regenerate, export, theme toggle). Start with `npm run dev`.                                                           |
 | 📑 **OpenAI function‑calling to constrain *Synthesize*** | ❌ **Not implemented yet** | Current synthesize node uses plain chat completion; adding a strict function‑call wrapper is still on the backlog.                                                          |
 | 🔗 **Slot‑Aware Reflect loop**                           | ✅ Done                    | `reflect_node` emits `need_more` + `new_queries`; router loops back to *Search* until all required slots are filled or `MAX_ITER` reached.                                  |
 

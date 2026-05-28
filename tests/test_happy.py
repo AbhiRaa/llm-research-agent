@@ -35,10 +35,17 @@ def test_cli_stub():
     guaranteeing the test is stable on any developer machine or CI runner.
     """
     # Run "python -m agent.cli  <question>"
+    #
+    # Set the keys to "" (not just pop them): tools.py calls load_dotenv(), which
+    # would otherwise re-populate them from a developer's .env and make this test
+    # hit the network non-deterministically. An empty value is "present" so
+    # load_dotenv(override=False) leaves it alone → guaranteed stub + mock path.
     env = os.environ.copy()
     env["PYTHONPATH"] = f"{SRC}:{env.get('PYTHONPATH','')}"
-    env.pop("BING_API_KEY",  None)      # force stub search
-    env.pop("SERPER_API_KEY", None)
+    env["OPENAI_API_KEY"] = ""   # force offline stub LLM
+    env["BING_API_KEY"] = ""     # force mock search
+    env["SERPER_API_KEY"] = ""
+    env["REDIS_URL"] = ""        # no cache / no network
     result = subprocess.run(
         [sys.executable, "-m", "agent.cli", "Who won the 2022 FIFA World Cup?"],
         capture_output=True,

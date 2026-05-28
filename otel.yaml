@@ -7,6 +7,10 @@ receivers:
 exporters:
   logging:
     loglevel: info      # emits every span to stdout – great for local dev
+  otlp/jaeger:          # forward spans to Jaeger for a real trace UI
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
 
 processors:
   batch:                # best-practice: push in batches
@@ -16,4 +20,4 @@ service:
     traces:
       receivers:  [otlp]
       processors: [batch]
-      exporters:  [logging]
+      exporters:  [logging, otlp/jaeger]

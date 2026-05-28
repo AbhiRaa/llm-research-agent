@@ -1,4 +1,6 @@
-import { Moon, Sun, Monitor, SearchCheckIcon, Circle, Trash2 } from "lucide-react"
+import { Moon, Sun, Monitor, Trash2, Download, Printer, PanelLeft } from "lucide-react"
+import Settings from "./Settings"
+import type { Controls } from "../hooks/useStream"
 
 type Theme = "light" | "dark" | "system"
 
@@ -6,95 +8,189 @@ interface HeaderProps {
   theme: Theme
   setTheme: (theme: Theme) => void
   onClearChat?: () => void
+  onExport?: () => void
+  onToggleSidebar?: () => void
   showClearButton?: boolean
+  busy?: boolean
+  controls: Controls
+  setControls: (c: Controls) => void
 }
 
-export default function Header({ theme, setTheme, onClearChat, showClearButton = false }: HeaderProps) {
+const edition = new Date().toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+})
+
+export default function Header({
+  theme,
+  setTheme,
+  onClearChat,
+  onExport,
+  onToggleSidebar,
+  showClearButton = false,
+  busy = false,
+  controls,
+  setControls,
+}: HeaderProps) {
+  const modes: { id: Theme; icon: typeof Sun; label: string }[] = [
+    { id: "light", icon: Sun, label: "Light" },
+    { id: "dark", icon: Moon, label: "Dark" },
+    { id: "system", icon: Monitor, label: "System" },
+  ]
+
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 dark:border-slate-700/20 dark:bg-slate-800/80 dark:supports-[backdrop-filter]:bg-slate-800/80">
-      <div className="w-full py-4">
-        <div className="flex items-center justify-between">
-          {/* Logo and Brand */}
-          <div className="flex items-center space-x-6">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 shadow-xl ring-1 ring-black/5 dark:ring-white/10">
-              <SearchCheckIcon className="h-8 w-8 text-white" />
+    <header className="sticky top-0 z-40 backdrop-blur-[2px]">
+      <div
+        className="halftone-flame halftone absolute inset-0 -z-10 opacity-[0.18]"
+        aria-hidden="true"
+        style={{ background: "var(--paper)" }}
+      />
+      <div className="mx-auto w-full max-w-[1180px] px-5 pt-4 sm:px-8">
+        <div className="flex items-end justify-between gap-4 pb-2">
+          {/* Masthead */}
+          <div className="flex items-end gap-3 sm:gap-4">
+            {onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                aria-label="Open sessions"
+                title="Sessions"
+                className="clear-btn ring-riso no-print mb-0.5 flex h-9 items-center justify-center px-2.5"
+              >
+                <PanelLeft className="h-[15px] w-[15px]" strokeWidth={2} />
+              </button>
+            )}
+            <div
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center border-2 sm:h-12 sm:w-12"
+              style={{ borderColor: "var(--ink)", background: "var(--paper-2)" }}
+            >
+              <span
+                className="absolute h-5 w-5 rounded-full sm:h-[22px] sm:w-[22px]"
+                style={{ background: "var(--blue)", left: "8px", top: "10px" }}
+              />
+              <span
+                className="overprint absolute h-5 w-5 rounded-full sm:h-[22px] sm:w-[22px]"
+                style={{ background: "var(--flame)", left: "14px", top: "10px" }}
+              />
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Search Assistant
+            <div className="leading-none">
+              <h1
+                className="riso-title text-3xl sm:text-4xl"
+                data-text="PROOF"
+                style={{ fontWeight: 800, letterSpacing: "-0.03em" }}
+              >
+                PROOF
               </h1>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  AI-powered web search
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                  <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                    Ready
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="sm:hidden">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                Search Assistant
-              </h1>
+              <p
+                className="kicker mt-1 hidden sm:block"
+                style={{ color: "var(--ink-mute)" }}
+              >
+                Evidence-led research · Nº 01
+              </p>
             </div>
           </div>
 
-          {/* Right side - Theme Toggle and Clear Button */}
-          <div className="flex items-center gap-4">
-            {/* Theme Toggle */}
-            <div className="flex items-center gap-0.5 rounded-xl border border-slate-200/50 bg-white/70 backdrop-blur-sm p-1.5 shadow-lg ring-1 ring-black/5 dark:border-slate-700/50 dark:bg-slate-800/70 dark:ring-white/10">
-            <button
-              onClick={() => setTheme("light")}
-              className={`rounded-lg p-2.5 transition-all duration-200 ${
-                theme === "light" 
-                  ? "bg-slate-900 text-white shadow-lg" 
-                  : "text-slate-600 hover:bg-white/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-300"
-              }`}
-              title="Light mode"
+          {/* Status + controls */}
+          <div className="no-print flex items-center gap-3 sm:gap-4">
+            <div
+              className="mono hidden items-center gap-3 text-[0.7rem] md:flex"
+              style={{ color: "var(--ink-mute)" }}
             >
-              <Sun className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setTheme("dark")}
-              className={`rounded-lg p-2.5 transition-all duration-200 ${
-                theme === "dark" 
-                  ? "bg-slate-900 text-white shadow-lg dark:bg-slate-100 dark:text-slate-900" 
-                  : "text-slate-600 hover:bg-white/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-300"
-              }`}
-              title="Dark mode"
-            >
-              <Moon className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setTheme("system")}
-              className={`rounded-lg p-2.5 transition-all duration-200 ${
-                theme === "system" 
-                  ? "bg-slate-900 text-white shadow-lg dark:bg-slate-100 dark:text-slate-900" 
-                  : "text-slate-600 hover:bg-white/50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-300"
-              }`}
-              title="System theme"
-            >
-              <Monitor className="h-4 w-4" />
-            </button>
+              <span className="uppercase tracking-widest">{edition}</span>
+              <span style={{ color: "var(--rule)" }}>|</span>
+              <span className="inline-flex items-center gap-1.5 uppercase tracking-widest">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${busy ? "stage-active" : ""}`}
+                  style={{ background: busy ? "var(--flame)" : "var(--blue)" }}
+                />
+                {busy ? "on press" : "ready"}
+              </span>
             </div>
 
-            {/* Clear Chat Button */}
+            <div
+              className="relative flex border-2"
+              style={{
+                borderColor: "var(--ink)",
+                background: "var(--paper-2)",
+                boxShadow: "3px 3px 0 var(--blue)",
+              }}
+              role="radiogroup"
+              aria-label="Color theme"
+            >
+              {/* sliding ink plate */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-0 top-0 h-full"
+                style={{
+                  width: `${100 / modes.length}%`,
+                  transform: `translateX(${modes.findIndex((m) => m.id === theme) * 100}%)`,
+                  background: "var(--ink)",
+                  transition: "transform 0.32s cubic-bezier(0.34, 1.4, 0.5, 1)",
+                }}
+              />
+              {modes.map(({ id, icon: Icon, label }) => {
+                const active = theme === id
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setTheme(id)}
+                    title={`${label} theme`}
+                    aria-label={`${label} theme`}
+                    role="radio"
+                    aria-checked={active}
+                    className="ring-riso relative z-10 flex h-9 w-9 items-center justify-center"
+                    style={{
+                      color: active ? "var(--paper)" : "var(--ink-soft)",
+                      transition: "color 0.2s ease",
+                    }}
+                  >
+                    <Icon
+                      className="h-[15px] w-[15px]"
+                      strokeWidth={2.25}
+                      style={{
+                        transform: active ? "scale(1.08)" : "scale(1)",
+                        transition: "transform 0.2s cubic-bezier(0.34, 1.4, 0.5, 1)",
+                      }}
+                    />
+                  </button>
+                )
+              })}
+            </div>
+
+            <Settings controls={controls} setControls={setControls} />
+
             {showClearButton && (
-              <div className="rounded-xl border border-slate-200/50 bg-white/70 backdrop-blur-sm p-1.5 shadow-lg ring-1 ring-black/5 dark:border-slate-700/50 dark:bg-slate-800/70 dark:ring-white/10">
+              <>
+                <button
+                  onClick={() => window.print()}
+                  title="Print / save as PDF"
+                  aria-label="Print this proof"
+                  className="clear-btn ring-riso flex h-9 items-center justify-center px-2.5"
+                >
+                  <Printer className="h-[15px] w-[15px]" strokeWidth={2} />
+                </button>
+                <button
+                  onClick={onExport}
+                  title="Export as Markdown"
+                  aria-label="Export conversation as Markdown"
+                  className="clear-btn ring-riso flex h-9 items-center justify-center px-2.5"
+                >
+                  <Download className="h-[15px] w-[15px]" strokeWidth={2} />
+                </button>
                 <button
                   onClick={onClearChat}
-                  className="rounded-lg p-2.5 transition-all duration-200 text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/20 dark:hover:text-red-300"
-                  title="Clear chat"
+                  title="Clear the record"
+                  aria-label="Clear the record"
+                  className="clear-btn ring-riso flex h-9 items-center gap-2 px-3"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-[15px] w-[15px]" strokeWidth={2} />
+                  <span className="kicker hidden sm:inline">Clear</span>
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>
+        <hr className="rule-double" />
       </div>
     </header>
   )

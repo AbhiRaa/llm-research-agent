@@ -1,14 +1,38 @@
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { KeyboardEvent } from "react"
-import { Send, Search } from "lucide-react"
+import { ArrowRight, Square, Mic, MicOff } from "lucide-react"
 
-export default function ChatInput({ onSend }: { onSend: (q: string) => void }) {
+interface ChatInputProps {
+  onSend: (q: string) => void
+  isLoading?: boolean
+  onStop?: () => void
+}
+
+// Web Speech API: TS dom lib doesn't declare it, and Safari only ships the
+// webkit-prefixed name — treat both as opaque.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const SR: any =
+  typeof window !== "undefined"
+    ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).SpeechRecognition ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).webkitSpeechRecognition
+    : undefined
+
+export default function ChatInput({
+  onSend,
+  isLoading = false,
+  onStop,
+}: ChatInputProps) {
   const [val, setVal] = useState("")
+  const [recording, setRecording] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // The Web Speech API instance — typed loosely because TS dom lib lacks it.
+  const recRef = useRef<unknown>(null)
 
   const send = () => {
     const q = val.trim()
-    if (q) {
+    if (q && !isLoading) {
       onSend(q)
       setVal("")
     }
@@ -21,56 +45,135 @@ export default function ChatInput({ onSend }: { onSend: (q: string) => void }) {
     }
   }
 
+  // autosize
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
-    }
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`
   }, [val])
 
+  // ⌘/Ctrl+K focus from anywhere
+  useEffect(() => {
+    const focus = () => textareaRef.current?.focus()
+    window.addEventListener("proof:focus-composer", focus)
+    return () => window.removeEventListener("proof:focus-composer", focus)
+  }, [])
+
+  const startDictation = () => {
+    if (!SR) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec: any = new SR()
+    rec.continuous = false
+    rec.interimResults = false
+    rec.lang = navigator.language || "en-US"
+    const base = val
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r[0].transcript)
+        .join("")
+        .trim()
+      if (!transcript) return
+      const sep = base && !base.endsWith(" ") ? " " : ""
+      setVal(base + sep + transcript)
+    }
+    rec.onend = () => setRecording(false)
+    rec.onerror = () => setRecording(false)
+    try {
+      rec.start()
+      recRef.current = rec
+      setRecording(true)
+    } catch {
+      setRecording(false)
+    }
+  }
+  const stopDictation = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(recRef.current as any)?.stop?.()
+    setRecording(false)
+  }
+
   return (
-    <div className="py-6 sm:py-8">
-      <div className="relative">
-        <div className="flex items-center gap-4 rounded-2xl border border-slate-200/50 bg-white backdrop-blur-sm p-4 shadow-xl ring-1 ring-black/5 transition-all duration-300 focus-within:border-violet-400/50 focus-within:bg-white focus-within:shadow-2xl focus-within:ring-4 focus-within:ring-violet-100/30 dark:border-slate-700/30 dark:bg-slate-800/90 dark:ring-white/10 dark:focus-within:border-violet-500/50 dark:focus-within:bg-slate-800/95 dark:focus-within:ring-violet-900/20 sm:p-6">
-          <div className="flex-shrink-0">
-            <Search className="h-7 w-7 text-slate-500 dark:text-slate-400" />
-          </div>
-
-          <div className="flex-1">
-            <textarea
-              ref={textareaRef}
-              value={val}
-              onChange={(e) => setVal(e.target.value)}
-              onKeyDown={onKey}
-              rows={1}
-              placeholder="Ask me anything..."
-              className="w-full resize-none bg-transparent text-xl font-medium outline-none"
-              style={{ 
-                minHeight: "40px", 
-                maxHeight: "200px",
-                color: "var(--text-color, #1f2937)",
-                caretColor: "var(--text-color, #1f2937)"
+    <div className="mx-auto w-full max-w-[1100px] px-5 py-4 sm:px-8 sm:py-5">
+      <div className="flex items-stretch gap-3">
+        <div
+          className="paper-card flex flex-1 items-end gap-3 px-4 py-3 sm:px-5"
+          style={{ boxShadow: "5px 5px 0 var(--blue)" }}
+        >
+          <span
+            className="mono mb-1.5 shrink-0 select-none text-sm font-bold"
+            style={{ color: "var(--flame)" }}
+            aria-hidden="true"
+          >
+            &gt;
+          </span>
+          <label htmlFor="composer" className="sr-only">
+            Ask anything
+          </label>
+          <textarea
+            id="composer"
+            ref={textareaRef}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={onKey}
+            rows={1}
+            placeholder="Set your query…"
+            disabled={isLoading}
+            className="mono w-full resize-none bg-transparent text-base leading-relaxed outline-none placeholder:opacity-60 disabled:opacity-50"
+            style={{ color: "var(--ink)", caretColor: "var(--flame)", minHeight: "28px" }}
+          />
+          {SR && (
+            <button
+              onClick={recording ? stopDictation : startDictation}
+              disabled={isLoading}
+              aria-label={recording ? "Stop dictation" : "Dictate"}
+              title={recording ? "Stop dictation" : "Dictate"}
+              className="ring-riso mb-1 shrink-0 p-1.5 transition-colors"
+              style={{
+                color: recording ? "var(--paper)" : "var(--ink-soft)",
+                background: recording ? "var(--flame)" : "transparent",
+                border: "2px solid var(--ink)",
               }}
-            />
-          </div>
+            >
+              {recording ? (
+                <MicOff className="h-4 w-4" strokeWidth={2.25} />
+              ) : (
+                <Mic className="h-4 w-4" strokeWidth={2.25} />
+              )}
+            </button>
+          )}
+        </div>
 
+        {isLoading ? (
+          <button
+            onClick={onStop}
+            aria-label="Stop the press"
+            className="press-btn ring-riso flex w-14 shrink-0 items-center justify-center sm:w-16"
+            style={{ background: "var(--ink)", color: "var(--paper)" }}
+          >
+            <Square className="h-5 w-5 fill-current" strokeWidth={0} />
+          </button>
+        ) : (
           <button
             onClick={send}
             disabled={!val.trim()}
-            className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-600 text-white shadow-lg ring-1 ring-violet-500/20 transition-all duration-200 hover:from-violet-700 hover:via-purple-700 hover:to-indigo-700 hover:shadow-xl hover:scale-105 hover:ring-violet-500/30 disabled:cursor-not-allowed disabled:from-slate-300 disabled:via-slate-400 disabled:to-slate-500 disabled:shadow-sm disabled:scale-100 disabled:ring-0 dark:disabled:from-slate-600 dark:disabled:via-slate-700 dark:disabled:to-slate-800"
+            aria-label="Run the press"
+            className="press-btn ring-riso flex w-14 shrink-0 items-center justify-center sm:w-16"
+            style={{ background: "var(--flame)", color: "var(--paper)" }}
           >
-            <Send className="h-6 w-6" />
+            <ArrowRight className="h-6 w-6" strokeWidth={2.5} />
           </button>
-        </div>
-
-        {/* Pro tip */}
-        <div className="mt-4 text-center sm:mt-6">
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-            Press <kbd className="mx-1 rounded-lg bg-slate-100/80 px-2.5 py-1.5 text-xs font-mono font-semibold shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/80 dark:ring-slate-700/50">Enter</kbd> to search &nbsp; 
-            <kbd className="mx-1 rounded-lg bg-slate-100/80 px-2.5 py-1.5 text-xs font-mono font-semibold shadow-sm ring-1 ring-slate-200/50 dark:bg-slate-800/80 dark:ring-slate-700/50">Shift + Enter</kbd> for new line
-          </p>
-        </div>
+        )}
       </div>
+
+      <p className="kicker mt-3 text-center" style={{ color: "var(--ink-mute)" }}>
+        <kbd className="mono">Enter</kbd> to run ·{" "}
+        <kbd className="mono">⇧ Enter</kbd> new line ·{" "}
+        <kbd className="mono">⌘K</kbd> focus ·{" "}
+        <kbd className="mono">Esc</kbd> stop
+      </p>
     </div>
   )
 }

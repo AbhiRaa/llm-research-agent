@@ -15,7 +15,7 @@ load_dotenv()  # load .env file if present
 BING_KEY = os.getenv("BING_API_KEY")
 SERPER_KEY = os.getenv("SERPER_API_KEY")
 
-TIMEOUT_SECS = 1.0  # short because we retry/fallback quickly
+TIMEOUT_SECS = 8.0  # real Serper/Bing needs room; mock still covers failures
 
 # --- Mock fallback ----------------------------------------------------------
 MOCK_POOL = [
@@ -57,10 +57,13 @@ async def _bing_search(query: str) -> List[Document]:
             data = await resp.json()
     docs = []
     for item in data.get("webPages", {}).get("value", []):
+        url = item.get("url")
+        if not url:
+            continue
         docs.append(
             Document(
-                page_content=item["snippet"],
-                metadata={"title": item["name"], "url": item["url"]},
+                page_content=item.get("snippet", item.get("name", "")),
+                metadata={"title": item.get("name", "Untitled"), "url": url},
             )
         )
     return docs
@@ -76,7 +79,7 @@ async def _web_search_uncached(query: str, retries: int = 2) -> List[Document]:
                 return await asyncio.wait_for(_bing_search(query), TIMEOUT_SECS)
             if SERPER_KEY:
                 return await asyncio.wait_for(_serper_search(query), TIMEOUT_SECS)
-        except (asyncio.TimeoutError, RuntimeError) as e:
+        except (asyncio.TimeoutError, aiohttp.ClientError, RuntimeError, Exception) as e:
             if attempt < retries and (
                 "429" in str(e) or isinstance(e, asyncio.TimeoutError)
             ):
@@ -87,16 +90,22 @@ async def _web_search_uncached(query: str, retries: int = 2) -> List[Document]:
 
 
 # ------ NEW: real Google SERP via Serper.dev ---------------------------------
-async def _serper_search(query: str) -> List[Document]:
+_RECENCY_TBS = {"day": "qdr:d", "week": "qdr:w", "month": "qdr:m"}
+
+
+async def _serper_search(query: str, recency: str | None = None) -> List[Document]:
     """
     Call Serper.dev (Google Search API) and return top 5 organic snippets.
-    Requires SERPER_API_KEY env-var.
+    Requires SERPER_API_KEY env-var. `recency` ("day"/"week"/"month") maps to
+    Google's `tbs=qdr:*` time filter so users can ask for fresh results.
     """
     if not SERPER_KEY:
         raise RuntimeError("No SERPER_API_KEY")
     url = "https://google.serper.dev/search"
     headers = {"X-API-KEY": SERPER_KEY, "Content-Type": "application/json"}
     payload = {"q": query, "num": 5}
+    if recency in _RECENCY_TBS:
+        payload["tbs"] = _RECENCY_TBS[recency]
 
     async with aiohttp.ClientSession() as sess:
         async with sess.post(url, headers=headers, json=payload, timeout=10) as resp:
@@ -108,21 +117,26 @@ async def _serper_search(query: str) -> List[Document]:
 
     docs: List[Document] = []
     for item in data.get("organic", []):
+        link = item.get("link")
+        if not link:
+            continue
         docs.append(
             Document(
-                page_content=item["snippet"],
-                metadata={"title": item["title"], "url": item["link"]},
+                page_content=item.get("snippet", item.get("title", "")),
+                metadata={"title": item.get("title", "Untitled"), "url": link},
             )
         )
     return docs
 
 
 # --- Public API -------------------------------------------------------------
-@cached(ttl=3600)  # 1-hour cache
-async def web_search(query: str, retries: int = 2) -> List[Document]:
+@cached(ttl=3600)  # 1-hour cache (keyed on query + recency)
+async def web_search(
+    query: str, retries: int = 2, recency: str | None = None
+) -> List[Document]:
     """
     Try Bing first (if key present), else Serper.dev, both with:
-    • 1-second timeout wrapper
+    • timeout wrapper (TIMEOUT_SECS)
     • up to `retries` retry attempts on HTTP 429 or timeout
     Fall back to deterministic mock docs when everything fails.
     """
@@ -132,8 +146,10 @@ async def web_search(query: str, retries: int = 2) -> List[Document]:
             if BING_KEY:
                 return await asyncio.wait_for(_bing_search(query), TIMEOUT_SECS)
             if SERPER_KEY:
-                return await asyncio.wait_for(_serper_search(query), TIMEOUT_SECS)
-        except (asyncio.TimeoutError, RuntimeError) as e:
+                return await asyncio.wait_for(
+                    _serper_search(query, recency), TIMEOUT_SECS
+                )
+        except (asyncio.TimeoutError, aiohttp.ClientError, RuntimeError, Exception) as e:
             if attempt < retries and (
                 "429" in str(e) or isinstance(e, asyncio.TimeoutError)
             ):

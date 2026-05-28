@@ -1,8 +1,6 @@
 #!/bin/bash
-# Startup script for Railway deployment
+# Container entrypoint. Honours $PORT (HF Spaces, Fly, Cloud Run, Render,
+# Railway, etc. all inject it). Falls back to 8000 for local docker run.
 
-# Set default port if not provided
 export PORT=${PORT:-8000}
-
-# Start the uvicorn server
-uvicorn agent.server:app --host=0.0.0.0 --port=$PORT --proxy-headers
+exec uvicorn agent.server:app --host=0.0.0.0 --port=$PORT --proxy-headers

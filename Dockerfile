@@ -38,5 +38,6 @@ COPY --from=web /web/dist /app/web
 ENV PYTHONPATH=/app/src \
     WEB_DIST_DIR=/app/web
 
-# Railway/Cloud-Run/etc. override PORT — start.sh honors it.
+# Most platforms (HF Spaces, Fly, Cloud Run, Render, Railway, …) inject
+# the listen port via $PORT — start.sh honors it.
 CMD ["./start.sh"]

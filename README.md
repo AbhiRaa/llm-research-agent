@@ -1,6 +1,8 @@
 # Teamwork AI – LLM Research Agent (v1)
 
-🚀 **[Live Demo](https://llm-research-agent.abhira.dev)** 🚀
+🚀 **[Live Demo → proof.abhira.dev](https://proof.abhira.dev)** 🚀
+
+> SPA hosted on **Vercel** · agent backend on **Hugging Face Spaces** ([source](https://huggingface.co/spaces/AbhiRaa/proof)) · cache + share via **Upstash Redis** — all on free tiers.
 
 A production‑style research assistant that answers any question in ≤ 80 words and **always** cites its sources.  
 Runs end‑to‑end **offline** for CI, upgrades to real web‑search + GPT‑3.5‑Turbo when you export the relevant API keys.

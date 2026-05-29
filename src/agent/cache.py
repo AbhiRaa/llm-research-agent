@@ -9,11 +9,13 @@ Thin Redis wrapper that caches *JSON-serialisable* results.
 
 from __future__ import annotations
 
-import os, sys, json
+import os, sys, json, logging
 from typing import Any, Awaitable, Callable, List, TypedDict
 
 import redis.asyncio as redis
 from langchain.schema import Document
+
+_log = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────
 _REDIS_URL = os.getenv("REDIS_URL")
@@ -122,9 +124,10 @@ def cached(ttl: int = 300):
             if r:
                 try:
                     await r.set(key, _maybe_encode(result), ex=ttl)
-                except TypeError:
-                    # Unsupported type → skip caching silently
-                    pass
+                except TypeError as e:
+                    # Unsupported type → skip caching, but log which one so a
+                    # serialisation regression isn't completely invisible.
+                    _log.debug("cache: skipped caching %s (%s)", func.__name__, e)
             return result
 
         return _inner
@@ -135,15 +138,18 @@ def cached(ttl: int = 300):
 # ───────────────────────── full-answer cache ──────────────────────────────
 # Cache the *final* answer keyed by question so repeated asks are instant and
 # free. No-ops transparently when Redis is unavailable.
-def _answer_key(question: str) -> str:
-    return "answer:" + question.strip().lower()
+# NB: callers pass the *composite* control-aware key built in graph._cache_key
+# (e.g. "What is AI?::w80::s3::r-::fprose"), not just the raw question — both
+# get/set apply _answer_key identically so the round-trip stays symmetric.
+def _answer_key(cache_key: str) -> str:
+    return "answer:" + cache_key.strip().lower()
 
 
-async def answer_cache_get(question: str) -> Any | None:
+async def answer_cache_get(cache_key: str) -> Any | None:
     r = await get_redis()
     if not r:
         return None
-    raw = await r.get(_answer_key(question))
+    raw = await r.get(_answer_key(cache_key))
     if raw is None:
         return None
     try:
@@ -152,14 +158,14 @@ async def answer_cache_get(question: str) -> Any | None:
         return None
 
 
-async def answer_cache_set(question: str, payload: Any, ttl: int = 3600) -> None:
+async def answer_cache_set(cache_key: str, payload: Any, ttl: int = 3600) -> None:
     r = await get_redis()
     if not r:
         return
     try:
-        await r.set(_answer_key(question), json.dumps(payload), ex=ttl)
-    except TypeError:
-        pass
+        await r.set(_answer_key(cache_key), json.dumps(payload), ex=ttl)
+    except TypeError as e:
+        _log.debug("cache: skipped answer_cache_set (%s)", e)
 
 
 # ───────────────────────── shareable permalinks ────────────────────────────
@@ -185,5 +191,6 @@ async def share_set(sid: str, payload: Any, ttl: int = 7 * 24 * 3600) -> bool:
     try:
         await r.set(f"share:{sid}", json.dumps(payload), ex=ttl)
         return True
-    except TypeError:
+    except TypeError as e:
+        _log.debug("cache: skipped share_set (%s)", e)
         return False

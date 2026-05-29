@@ -3,8 +3,11 @@ LangGraph 0.5-compatible pipeline builder.
 Implements: Generate ➜ Search ➜ Reflect (loop ≤2) ➜ Synthesize
 """
 
+import logging
 from typing import Dict, Any, AsyncIterator, Optional
 from langgraph.graph import StateGraph
+
+_log = logging.getLogger(__name__)
 
 from .nodes import (
     generate_node,
@@ -37,10 +40,18 @@ def _build_graph():
 
     # ➍ Conditional routing after Reflect
     def route_after_reflect(state: Dict[str, Any]) -> str:
-        """Return next-node name based on reflect output."""
-        state["iter"] = state.get("iter", 0) + 1
-        if state["iter"] < MAX_ITER and state.get("need_more", False):
-            # Loop back for a second search
+        """Return next-node name based on reflect output.
+
+        ``reflect_node`` already advances ``state["iter"]`` *and* forces
+        ``need_more=False`` once the budget is hit, so the router must NOT
+        increment again. The old double-increment counted each round twice,
+        so the compiled graph hit ``iter == MAX_ITER`` after a single pass and
+        never re-searched — defeating the reflect loop on the CLI path. The
+        streaming path (``astream_answer``) already used its own counter and
+        was unaffected; this aligns both on one source of truth.
+        """
+        if state.get("iter", 0) < MAX_ITER and state.get("need_more", False):
+            # Loop back for another Search → Reflect cycle
             return "search"
         return "synthesize"
 
@@ -74,10 +85,21 @@ def _cache_key(question: str, max_words: int, max_sources: int, recency, fmt) ->
     return f"{question}::w{max_words}::s{max_sources}::r{recency or '-'}::f{fmt}"
 
 
+def _safe_scheme(url) -> bool:
+    """True only for http(s) URLs (or the offline stub's ``local``)."""
+    if not isinstance(url, str):
+        return False
+    u = url.strip().lower()
+    return u == "local" or u.startswith(("http://", "https://"))
+
+
 def _normalize_citations(answer: str, citations: list) -> tuple[str, list]:
     """Make every [n] in the answer correspond to a real, deduped source.
 
     Goals:
+      - drop any source whose URL uses an unsafe scheme (defence-in-depth so a
+        poisoned search result can't reach the client or the cache with a
+        ``javascript:``/``data:`` link — mirrors the /api/share guard)
       - dedupe sources by URL (first occurrence wins)
       - renumber 1..k in order of first reference inside the answer
       - drop orphan [n] markers (no matching source) so we never lie
@@ -86,6 +108,7 @@ def _normalize_citations(answer: str, citations: list) -> tuple[str, list]:
     """
     import re as _re
 
+    citations = [c for c in (citations or []) if _safe_scheme((c or {}).get("url"))]
     if not citations:
         return answer, []
 
@@ -257,8 +280,10 @@ async def astream_answer(
             "trace_id": trace_id,
         }
     except Exception as e:  # never leak a stack trace to the client
+        # Log the real cause server-side; the client only ever sees a generic,
+        # user-safe message (no exception text / implementation details).
+        _log.warning("astream_answer failed: %s", e)
         yield {
             "type": "error",
             "message": "The research run hit an error. Please try again.",
-            "detail": str(e),
         }

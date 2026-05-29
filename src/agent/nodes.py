@@ -4,7 +4,7 @@ They fall back to deterministic stubs when OPENAI_API_KEY is absent,
 so unit-tests and CI run fully offline.
 """
 
-import json, asyncio, os, re
+import json, asyncio, logging, os, re
 from typing import Dict, Any, List, AsyncIterator
 from langchain.schema import Document
 from langchain.prompts import ChatPromptTemplate
@@ -14,6 +14,7 @@ import openai
 from agent.observability import REQUEST_COUNTER, LATENCY_HISTO, init as _get_tracer
 
 _tracer = _get_tracer()
+_log = logging.getLogger(__name__)
 
 MAX_ITER = 2
 
@@ -54,7 +55,11 @@ async def _offline_stub(prompt: ChatPromptTemplate, **kwargs) -> str:
 if USE_LLM:
     from langchain_openai import ChatOpenAI
 
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    # gpt-4o-mini is cheaper *and* stronger than gpt-3.5-turbo (better JSON
+    # adherence in Reflect/Generate, fewer prose-wrapped lists), so it's the
+    # default. Override with OPENAI_MODEL to pin any other chat model.
+    _LLM_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    llm = ChatOpenAI(model=_LLM_MODEL, temperature=0)
 
     async def call_llm(prompt: ChatPromptTemplate, **kwargs) -> str:
         try:
@@ -138,7 +143,10 @@ async def search_node(state: Dict[str, Any]) -> Dict[str, Any]:
     merged: Dict[str, Document] = {}
     for lst in docs_lists:
         for d in lst:
-            merged[d.metadata["url"]] = d
+            # Dedupe by URL; skip the rare doc with no URL rather than KeyError.
+            url = (d.metadata or {}).get("url")
+            if url:
+                merged[url] = d
     return {
         "question": state["question"],
         "queries": state["queries"],
@@ -225,7 +233,11 @@ async def synthesize_node(state: Dict[str, Any]) -> Dict[str, Any]:
     answer = answer_raw.lstrip().removeprefix("Human:").removeprefix("Assistant:")
 
     citations = [
-        {"id": i + 1, "title": d.metadata.get("title"), "url": d.metadata["url"]}
+        {
+            "id": i + 1,
+            "title": (d.metadata or {}).get("title"),
+            "url": (d.metadata or {}).get("url", "local"),
+        }
         for i, d in enumerate(docs[:3])
     ]
     return {"answer": answer.strip(), "citations": citations}
@@ -312,8 +324,8 @@ async def synthesize_stream(state: Dict[str, Any]) -> AsyncIterator[Dict[str, An
     citations = [
         {
             "id": i + 1,
-            "title": d.metadata.get("title"),
-            "url": d.metadata.get("url", "local"),
+            "title": (d.metadata or {}).get("title"),
+            "url": (d.metadata or {}).get("url", "local"),
             "snippet": (d.page_content or "")[:240],
         }
         for i, d in enumerate(use_docs)
@@ -353,6 +365,8 @@ async def generate_followups(question: str, answer: str) -> List[str]:
             data = next((v for v in data.values() if isinstance(v, list)), [])
         if isinstance(data, list):
             return [s for s in data if isinstance(s, str) and s.strip()][:3]
-    except Exception:
-        pass
+    except Exception as e:
+        # Non-critical feature — degrade to "no suggestions" but leave a trace
+        # so a persistent failure (timeouts, format drift) is debuggable.
+        _log.warning("generate_followups failed: %s", e)
     return []

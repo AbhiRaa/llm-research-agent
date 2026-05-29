@@ -27,6 +27,7 @@ export interface Message {
   text: string
   timestamp: Date
   isStreaming?: boolean
+  waking?: boolean
   stopped?: boolean
   cached?: boolean
   error?: boolean
@@ -163,6 +164,9 @@ export default function useStream() {
   controlsRef.current = controls
   const esRef = useRef<EventSource | null>(null)
   const activeAssistantRef = useRef<string | null>(null)
+  // Lets the teardown paths (stop / switch / new / clear / next run) cancel the
+  // active run's cold-start timers so they can't fire against superseded state.
+  const streamCleanupRef = useRef<(() => void) | null>(null)
 
   const setControls = useCallback((c: Controls) => {
     setControlsState(c)
@@ -182,8 +186,18 @@ export default function useStream() {
         msgKey(activeSessionId),
         JSON.stringify(messages.slice(-30)),
       )
-    } catch {
-      /* quota — ignore */
+    } catch (e) {
+      // Most likely the storage quota — we already cap to the last 30 turns, so
+      // this is rare, but warn rather than lose history completely silently.
+      if (
+        e instanceof DOMException &&
+        (e.name === "QuotaExceededError" ||
+          e.name === "NS_ERROR_DOM_QUOTA_REACHED")
+      ) {
+        console.warn(
+          "PROOF: localStorage is full — the most recent history may not be saved.",
+        )
+      }
     }
     setSessions((prev) => {
       const idx = prev.findIndex((s) => s.id === activeSessionId)
@@ -216,6 +230,14 @@ export default function useStream() {
     setMessages((prev) => prev.map((m) => (m.id === id ? fn(m) : m)))
   }, [])
 
+  // Cancel any pending stream timers / connection if the hook unmounts.
+  useEffect(() => {
+    return () => {
+      streamCleanupRef.current?.()
+      esRef.current?.close()
+    }
+  }, [])
+
   const run = useCallback(
     (
       question: string,
@@ -223,6 +245,8 @@ export default function useStream() {
       assistantId: string,
       opts: { nocache?: boolean } = {},
     ) => {
+      // Cancel any timers still pending from a prior run before starting a new one.
+      streamCleanupRef.current?.()
       const base = import.meta.env.VITE_API_BASE_URL || ""
       const c = controlsRef.current
       const params = new URLSearchParams({
@@ -238,8 +262,79 @@ export default function useStream() {
       esRef.current = es
       activeAssistantRef.current = assistantId
       let buffer = ""
+      let gotData = false
+
+      // A late event from a stream the user has since superseded (switched
+      // session, hit Stop, asked again) must not clobber the new state.
+      const isStale = () => activeAssistantRef.current !== assistantId
+
+      // Cold-start handling: the free-tier backend (HF Spaces) sleeps when
+      // idle, so the *first* request can take many seconds just to connect.
+      // Surface a "waking up" hint after a short grace period, and bound the
+      // total wait so the UI never hangs forever on a dead connection.
+      let wakeTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        if (!gotData && !isStale())
+          patch(assistantId, (m) => ({ ...m, waking: true }))
+      }, 3500)
+      let hardTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        if (gotData) return
+        clearTimers()
+        es.close()
+        if (isStale()) return // superseded — leave the new stream's state alone
+        patch(assistantId, (m) => ({
+          ...m,
+          isStreaming: false,
+          waking: false,
+          error: true,
+          text: "The server didn't respond in time — it may be waking from sleep. Please try again in a moment.",
+        }))
+        setIsLoading(false)
+        activeAssistantRef.current = null
+      }, 75000)
+
+      const clearTimers = () => {
+        if (wakeTimer) {
+          clearTimeout(wakeTimer)
+          wakeTimer = null
+        }
+        if (hardTimer) {
+          clearTimeout(hardTimer)
+          hardTimer = null
+        }
+      }
+      // Expose timer-cancellation to the teardown paths.
+      streamCleanupRef.current = clearTimers
+      // First byte from the server → it's awake and streaming. Drop the
+      // cold-start timers and clear the hint.
+      const markLive = () => {
+        if (!gotData) {
+          gotData = true
+          patch(assistantId, (m) => (m.waking ? { ...m, waking: false } : m))
+        }
+        clearTimers()
+      }
+      const finalize = (asError: boolean) => {
+        clearTimers()
+        es.close()
+        if (isStale()) return // superseded — leave the new stream's state alone
+        patch(assistantId, (m) =>
+          m.text || !asError
+            ? { ...m, isStreaming: false, waking: false }
+            : {
+                ...m,
+                isStreaming: false,
+                waking: false,
+                error: true,
+                text: "The research run hit a snag. Please try again.",
+              },
+        )
+        setIsLoading(false)
+        activeAssistantRef.current = null
+      }
 
       es.addEventListener("stage", (e: MessageEvent) => {
+        markLive()
+        if (isStale()) return
         try {
           const { name, status, meta } = JSON.parse(e.data)
           patch(assistantId, (m) => ({
@@ -256,6 +351,8 @@ export default function useStream() {
       })
 
       es.addEventListener("queries", (e: MessageEvent) => {
+        markLive()
+        if (isStale()) return
         try {
           patch(assistantId, (m) => ({ ...m, queries: JSON.parse(e.data).value }))
         } catch {
@@ -264,6 +361,8 @@ export default function useStream() {
       })
 
       es.addEventListener("coverage", (e: MessageEvent) => {
+        markLive()
+        if (isStale()) return
         try {
           patch(assistantId, (m) => ({ ...m, coverage: JSON.parse(e.data).value }))
         } catch {
@@ -272,6 +371,8 @@ export default function useStream() {
       })
 
       es.addEventListener("followups", (e: MessageEvent) => {
+        markLive()
+        if (isStale()) return
         try {
           patch(assistantId, (m) => ({ ...m, followups: JSON.parse(e.data).value }))
         } catch {
@@ -280,16 +381,28 @@ export default function useStream() {
       })
 
       es.addEventListener("token", (e: MessageEvent) => {
+        markLive()
+        if (isStale()) return
         try {
           const { text } = JSON.parse(e.data)
           buffer += text
-          patch(assistantId, (m) => ({ ...m, text: buffer, isStreaming: true }))
+          patch(assistantId, (m) => ({
+            ...m,
+            text: buffer,
+            isStreaming: true,
+            waking: false,
+          }))
         } catch {
           /* ignore */
         }
       })
 
       es.addEventListener("done", (e: MessageEvent) => {
+        clearTimers()
+        if (isStale()) {
+          es.close()
+          return // superseded — leave the new stream's state alone
+        }
         try {
           const { answer, citations, cached, coverage, followups, trace_id } =
             JSON.parse(e.data)
@@ -302,31 +415,34 @@ export default function useStream() {
             followups: followups ?? m.followups,
             traceId: trace_id ?? m.traceId,
             isStreaming: false,
+            waking: false,
           }))
         } catch {
           /* ignore */
-        } finally {
-          es.close()
-          setIsLoading(false)
-          activeAssistantRef.current = null
         }
-      })
-
-      es.addEventListener("error", () => {
-        // distinguish "server sent error event" vs connection drop — both end here
-        patch(assistantId, (m) =>
-          m.text
-            ? { ...m, isStreaming: false }
-            : {
-                ...m,
-                isStreaming: false,
-                error: true,
-                text: "The research run hit a snag. Please try again.",
-              },
-        )
         es.close()
         setIsLoading(false)
         activeAssistantRef.current = null
+      })
+
+      es.addEventListener("error", (e: Event) => {
+        // A server-sent `event: error` frame carries data; a bare connection
+        // error does not — the two need different handling.
+        const data = (e as MessageEvent).data
+        if (data) {
+          finalize(true) // server reported a failure → stop here
+          return
+        }
+        if (!gotData && es.readyState === EventSource.CONNECTING) {
+          // Transient connection error before any data arrived — almost always
+          // the backend still booting from sleep. EventSource auto-retries, so
+          // we show the waking hint and let it (hardTimer bounds the wait). We
+          // deliberately do NOT close here, and only allow this *before* data,
+          // so a mid-stream drop can never silently re-run the whole query.
+          if (!isStale()) patch(assistantId, (m) => ({ ...m, waking: true }))
+          return
+        }
+        finalize(true)
       })
     },
     [patch],
@@ -368,6 +484,7 @@ export default function useStream() {
   const stopStream = useCallback(() => {
     esRef.current?.close()
     esRef.current = null
+    streamCleanupRef.current?.()
     setIsLoading(false)
     const id = activeAssistantRef.current
     activeAssistantRef.current = null
@@ -397,6 +514,7 @@ export default function useStream() {
   const clearMessages = useCallback(() => {
     esRef.current?.close()
     esRef.current = null
+    streamCleanupRef.current?.()
     activeAssistantRef.current = null
     setIsLoading(false)
     setMessages([])
@@ -411,6 +529,7 @@ export default function useStream() {
   const newSession = useCallback(() => {
     esRef.current?.close()
     esRef.current = null
+    streamCleanupRef.current?.()
     activeAssistantRef.current = null
     setIsLoading(false)
     const id = genId()
@@ -429,6 +548,7 @@ export default function useStream() {
       if (id === activeSessionId) return
       esRef.current?.close()
       esRef.current = null
+      streamCleanupRef.current?.()
       activeAssistantRef.current = null
       setIsLoading(false)
       setActiveSessionId(id)

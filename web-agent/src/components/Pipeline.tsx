@@ -11,13 +11,19 @@ const LABELS: Record<string, string> = {
  * Live "press run" — reflects the REAL backend pipeline stages streamed over
  * SSE (generate → search → reflect → synthesize), not a timer.
  */
-export default function Pipeline({ stages }: { stages: Stage[] }) {
+export default function Pipeline({
+  stages,
+  waking = false,
+}: {
+  stages: Stage[]
+  waking?: boolean
+}) {
   return (
     <div
       className="paper-card riso-in px-5 py-4 sm:px-6"
       role="status"
       aria-live="polite"
-      aria-label="Researching"
+      aria-label={waking ? "Waking the server" : "Researching"}
     >
       <div className="mb-3 flex items-center gap-3">
         <span className="roller h-3 w-10 border-2" style={{ borderColor: "var(--ink)" }} />
@@ -25,6 +31,19 @@ export default function Pipeline({ stages }: { stages: Stage[] }) {
           On press · researching
         </span>
       </div>
+
+      {/* Free-tier backends sleep when idle; the first request after a nap can
+          take a while to boot. Tell the reader that's what the wait is, rather
+          than letting the pipeline sit frozen and look broken. */}
+      {waking && (
+        <p
+          className="mono mb-3 text-[0.72rem] leading-snug"
+          style={{ color: "var(--ink-mute)" }}
+        >
+          Waking the server — the free-tier backend sleeps when idle. The first
+          run after a nap takes a few seconds. Hang tight…
+        </p>
+      )}
       <ol className="list-clean flex flex-col gap-2.5 sm:flex-row sm:gap-2">
         {stages.map((s, i) => {
           const done = s.status === "done"

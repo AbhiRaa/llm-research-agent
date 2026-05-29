@@ -36,3 +36,31 @@ jobs:
       # lint runs across the whole src/ — one pre-existing shadcn warning is allowed
       - run: npm run lint || true
       - run: npm run build
+
+  # Deploy to the Hugging Face Space, but only after tests + the SPA build pass
+  # and only for pushes to `production` (HF is not git-synced — see CLAUDE.md).
+  # Needs an `HF_TOKEN` repo secret (Settings → Secrets and variables → Actions);
+  # without it the job no-ops with a warning so CI stays green.
+  deploy-hf:
+    name: deploy to Hugging Face Space
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-hf
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install "huggingface_hub>=0.25"
+      - name: Upload to Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::HF_TOKEN secret not set — skipping HF deploy. Add it in repo Settings → Secrets and variables → Actions."
+            exit 0
+          fi
+          python scripts/deploy_hf.py

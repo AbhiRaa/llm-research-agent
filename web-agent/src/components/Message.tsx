@@ -27,6 +27,7 @@ interface MessageProps {
   citations?: Citation[]
   stages?: Stage[]
   isStreaming?: boolean
+  waking?: boolean
   cached?: boolean
   stopped?: boolean
   error?: boolean
@@ -43,12 +44,38 @@ interface MessageProps {
 }
 
 function hostOf(url: string): string {
+  // Fail-safe: only surface a hostname for real http(s) URLs. A poisoned
+  // citation (javascript:, data:, //evil) must never have its raw string flow
+  // into the favicon request, so anything else collapses to a neutral label.
   try {
-    return new URL(url).hostname.replace(/^www\./, "")
+    const u = new URL(url)
+    if (u.protocol !== "http:" && u.protocol !== "https:") return "source"
+    return u.hostname.replace(/^www\./, "") || "source"
   } catch {
-    return url
+    return "source"
   }
 }
+
+// Only http(s)/mailto links are safe in an href. Anything else — javascript:,
+// data:, vbscript: — is dropped to "#", so a malicious shared payload can't
+// execute script when a visitor clicks a citation or an inline markdown link.
+// (Defence-in-depth: the /api/share endpoint also rejects unsafe schemes.)
+function safeUrl(url: string): string {
+  try {
+    const u = new URL(url, window.location.origin)
+    return ["http:", "https:", "mailto:"].includes(u.protocol) ? u.href : "#"
+  } catch {
+    return "#"
+  }
+}
+
+// Neutral globe glyph shown when Google's favicon CDN is unreachable
+// (strict firewalls / offline) instead of a broken-image icon.
+const FALLBACK_FAVICON =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='gray' stroke-width='2'><circle cx='12' cy='12' r='9'/><path d='M3 12h18'/><path d='M12 3a15 15 0 0 1 0 18'/><path d='M12 3a15 15 0 0 0 0 18'/></svg>"
+  )
 
 // lightweight, safe inline markdown + citation renderer (no innerHTML)
 const TOKEN =
@@ -103,7 +130,7 @@ function renderRich(text: string, onCite: (id: number) => void): ReactNode[] {
       out.push(
         <a
           key={`l${key++}`}
-          href={linkUrl}
+          href={safeUrl(linkUrl)}
           target="_blank"
           rel="noreferrer noopener"
           style={{ color: "var(--blue)", textDecoration: "underline" }}
@@ -126,6 +153,7 @@ export default function Message({
   citations = [],
   stages,
   isStreaming = false,
+  waking = false,
   cached = false,
   stopped = false,
   error = false,
@@ -261,7 +289,7 @@ export default function Message({
       </div>
 
       {!text && isStreaming ? (
-        <Pipeline stages={stages ?? []} />
+        <Pipeline stages={stages ?? []} waking={waking} />
       ) : (
         <article
           className="paper-card px-6 py-7 sm:px-9 sm:py-9"
@@ -379,7 +407,7 @@ export default function Message({
                 {citations.map((c) => (
                   <li key={c.id} id={`source-${seq}-${c.id}`}>
                     <a
-                      href={c.url}
+                      href={safeUrl(c.url)}
                       target="_blank"
                       rel="noreferrer noopener"
                       className="ring-riso group/src flex items-center gap-3 border-t-2 py-3 transition-colors"
@@ -398,7 +426,15 @@ export default function Message({
                         height={18}
                         className="shrink-0"
                         style={{ borderRadius: 2 }}
-                        onError={(e) => (e.currentTarget.style.visibility = "hidden")}
+                        onError={(e) => {
+                          const img = e.currentTarget
+                          if (img.dataset.fb) {
+                            img.style.visibility = "hidden"
+                            return
+                          }
+                          img.dataset.fb = "1"
+                          img.src = FALLBACK_FAVICON
+                        }}
                       />
                       <span className="min-w-0 flex-1">
                         <span

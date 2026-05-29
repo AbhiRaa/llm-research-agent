@@ -145,6 +145,7 @@ export default function Chat({
                   citations={m.citations}
                   stages={m.stages}
                   isStreaming={m.isStreaming}
+                  waking={m.waking}
                   cached={m.cached}
                   stopped={m.stopped}
                   error={m.error}

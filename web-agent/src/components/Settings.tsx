@@ -250,6 +250,9 @@ export default function Settings({
         <div
           className="paper-card riso-in p-4"
           style={{
+            // border-box so the inline width includes the p-4 padding (see the
+            // Tailwind-v4 preflight-gap note on the mobile sheet below).
+            boxSizing: "border-box",
             position: "absolute",
             top: "100%",
             right: 0,
@@ -288,11 +291,15 @@ export default function Settings({
               role="dialog"
               aria-label="Answer settings"
               style={{
+                // box-sizing must be explicit: the Tailwind-v4 preflight gap
+                // means elements default to content-box, so width + padding would
+                // otherwise overflow the viewport to the right. With border-box and
+                // left/right:0 defining the width, the 1rem padding sits *inside*.
+                boxSizing: "border-box",
                 position: "fixed",
                 left: 0,
                 right: 0,
                 bottom: 0,
-                width: "100%",
                 maxHeight: "min(85vh, 40rem)",
                 overflowY: "auto",
                 zIndex: 61,

@@ -1,6 +1,8 @@
 # Resume Evidence Pack — PROOF
 
 > Live: **https://proof.abhira.dev** · Source: **https://github.com/AbhiRaa/llm-research-agent** · Backend Space: **https://huggingface.co/spaces/AbhiRaa/proof**
+>
+> _Last refreshed: 2026-05-30 (commit cd4b2d6). Maintained via the `evidence-pack` skill — re-run "update my evidence pack" after shipping new work._
 
 ## 1) Project Overview (5–10 lines)
 - **PROOF** is a production-grade research agent that answers any question in ≤80 words and grounds every claim in a real, deduplicated source — runs end-to-end **offline** for CI (stub LLM + mock search) and progressively upgrades to real OpenAI + Serper as env vars appear (`src/agent/nodes.py`, `src/agent/tools.py`).
@@ -133,7 +135,33 @@
 - **A public demo is an attack surface (S)** — anonymous SSE plus a public share-*write* endpoint behind shared proxies meant one bad actor could plant stored XSS in a shared proof (a `javascript:`/`data:` citation URL renders as an `<a href>`), junk-fill Redis with oversized payloads, or exhaust everyone's rate limit at once (all callers collapsed to the proxy IP, so the limiter keyed the wrong identity). **(A)** Added an http(s)-only URL-scheme guard on every rendered link — client (`safeUrl`), server (`_safe_url` on `/api/share`), and the streaming path (`_safe_scheme`) — size/type/field caps on `POST /api/share`, a question-length cap, proxy-aware rate limiting keyed on `X-Forwarded-For` with stale-bucket eviction, spec-compliant CORS (`allow_credentials=false`), and a rate-limited `/debug`; ran the scheme guard against whitespace/tab/mixed-case obfuscation in a headless browser. **(R)** The live demo stays open safely: no stored-XSS vector, bounded memory, and per-client fair rate limiting behind the HF/Vercel proxies. Evidence: `web-agent/src/components/Message.tsx::safeUrl`, `src/agent/server.py::_safe_url`/`_real_ip`/`_sweep`, `src/agent/graph.py::_safe_scheme`.
 - **Backend deploys were manual and forgettable (S)** — HF Spaces isn't git-synced, so every backend change needed a hand-run `upload_folder`, and a stale Space could silently diverge from `production`; a naïve full upload would also clobber the Space's frontmatter `README.md` (which holds `app_port: 7860`) and break routing. **(A)** Wrote a reusable `scripts/deploy_hf.py` that excludes the Space README + build/test artifacts, and a gated `deploy-hf` CI job that runs it after tests pass on `production` pushes — no-opping with a warning when `HF_TOKEN` is absent so CI never goes red. **(R)** The backend now ships automatically on green, the same script covers manual deploys (one source of truth), and a verified post-deploy smoke (a brand-new `400` guard) confirms the new image is actually live. Evidence: `.github/workflows/ci.yml`, `scripts/deploy_hf.py`.
 
-## 7) Commands I Ran (Reproducibility)
+## 7) LinkedIn Section (copy-paste)
+
+> Drop this straight into the LinkedIn project entry (or a launch post). Same facts as the bullet pool above, in a warmer first-person-implied voice. Refresh it whenever the pack is refreshed.
+
+```text
+PROOF — an evidence-led LLM research agent · live at proof.abhira.dev
+
+Built and shipped PROOF, a production research agent that streams ≤80-word, citation-grounded answers; live at proof.abhira.dev. Runs end-to-end offline for CI via a stub LLM + mock search, and upgrades to real OpenAI (gpt-4o-mini) + Serper when env vars are set.
+
+– Designed a 4-node LangGraph pipeline (Generate → Search → Reflect ≤2 loops → Synthesize) with per-request user controls — answer length (40/80/150 words, hard-enforced), source count (1–5), recency filter, and format (prose/bullets/TL;DR) — all folded into the answer-cache key so a 40-word answer can never be served for a 150-word request.
+
+– Implemented real LLM token streaming over 1 SSE (/api/stream) and 1 WebSocket (/api/ws) endpoint, emitting 7 typed events from one async generator (stage / queries / token / coverage / followups / done / error) that drive a live pipeline UI with "show the work" queries, follow-up chips, and a coverage bar from the Reflect step; reconnect-safe, with a cold-start "waking" state for the sleeping free-tier backend and no re-run of an in-flight query on a dropped stream.
+
+– Built citation integrity (post-stream dedupe by URL + renumbered [n] markers + dropped orphans so hallucinated cites never reach the UI) and search resilience (8s timeout, 2 retries with backoff, broad exception catch, deterministic mock fallback); 2 Redis cache layers — 1h per-search and full-answer keyed on question + controls.
+
+– Hardened for production and security: blocked javascript:/data: URL-scheme XSS on every rendered citation/markdown link (enforced client- and server-side), added input/abuse caps (question-length limit + size/type-validated share payloads), and made rate limiting proxy-aware (sliding-window 30/min anon, 120/min authed, keyed on X-Forwarded-For with stale-bucket eviction) alongside optional Bearer/API-key auth; shareable permalinks (POST /api/share → opaque id, 7-day TTL), env-gated and rate-limited /debug, and a per-request OpenTelemetry root span so one trace_id flows back to the UI (Jaeger viewer wired in).
+
+– Deployed end-to-end on free tier with CI/CD: Vercel SPA on a custom domain (GoDaddy CNAME) + Hugging Face Spaces Docker backend + Upstash Redis; GitHub Actions runs 6 pytest suites + frontend lint+build on every push and, on production pushes, auto-deploys the backend to Hugging Face Spaces after tests pass; Playwright smoke E2E in web-agent/e2e/; single-image multi-stage Dockerfile so the same backend runs unchanged on Fly/Cloud Run/Render too.
+```
+
+**Optional one-line headline** (profile headline / post opener):
+
+```text
+Built PROOF — an evidence-led LLM research agent that streams ≤80-word, citation-grounded answers (LangGraph · FastAPI · React 19), shipped on a free-tier Vercel + Hugging Face + Upstash stack with CI/CD.
+```
+
+## 8) Commands I Ran (Reproducibility)
 - `git rev-list --count HEAD`
 - `git rev-list --count --author='AbhiRaa\|Abhinav' HEAD`
 - `git shortlog -sn --all`

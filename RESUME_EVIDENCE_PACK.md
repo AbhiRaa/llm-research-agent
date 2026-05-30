@@ -137,22 +137,22 @@
 
 ## 7) LinkedIn Section (copy-paste)
 
-> Drop this straight into the LinkedIn project entry (or a launch post). Same facts as the bullet pool above, in a warmer first-person-implied voice. Refresh it whenever the pack is refreshed.
+> Paste straight into the LinkedIn project **Description** field. LinkedIn caps that field at **2000 characters** — this block is **~1,720** (verified), so it fits as-is. The fuller, no-limit version lives in the Resume Bullet Pool (§5) above for a README / portfolio / post where the cap doesn't apply.
 
 ```text
-PROOF — an evidence-led LLM research agent · live at proof.abhira.dev
+PROOF — an evidence-led LLM research agent · proof.abhira.dev
 
-Built and shipped PROOF, a production research agent that streams ≤80-word, citation-grounded answers; live at proof.abhira.dev. Runs end-to-end offline for CI via a stub LLM + mock search, and upgrades to real OpenAI (gpt-4o-mini) + Serper when env vars are set.
+A production agent that streams ≤80-word, citation-grounded answers. Runs fully offline in CI (stub LLM + mock search) and upgrades to real OpenAI (gpt-4o-mini) + Serper when keys are set.
 
-– Designed a 4-node LangGraph pipeline (Generate → Search → Reflect ≤2 loops → Synthesize) with per-request user controls — answer length (40/80/150 words, hard-enforced), source count (1–5), recency filter, and format (prose/bullets/TL;DR) — all folded into the answer-cache key so a 40-word answer can never be served for a 150-word request.
+– 4-node LangGraph pipeline (Generate → Search → Reflect ≤2 loops → Synthesize) with per-request controls — length (40/80/150 words, hard-enforced), sources (1–5), recency, format (prose/bullets/TL;DR) — all baked into the answer-cache key, so a 40-word answer is never served for a 150-word request.
 
-– Implemented real LLM token streaming over 1 SSE (/api/stream) and 1 WebSocket (/api/ws) endpoint, emitting 7 typed events from one async generator (stage / queries / token / coverage / followups / done / error) that drive a live pipeline UI with "show the work" queries, follow-up chips, and a coverage bar from the Reflect step; reconnect-safe, with a cold-start "waking" state for the sleeping free-tier backend and no re-run of an in-flight query on a dropped stream.
+– Real LLM token streaming over SSE + WebSocket: 7 typed events from one async generator (stage/queries/token/coverage/followups/done/error) drive a live pipeline UI with "show the work" queries, follow-up chips, and a Reflect-step coverage bar — reconnect-safe, with a cold-start "waking" state and no re-run of an in-flight query on a dropped stream.
 
-– Built citation integrity (post-stream dedupe by URL + renumbered [n] markers + dropped orphans so hallucinated cites never reach the UI) and search resilience (8s timeout, 2 retries with backoff, broad exception catch, deterministic mock fallback); 2 Redis cache layers — 1h per-search and full-answer keyed on question + controls.
+– Citation integrity (post-stream dedupe by URL, renumbered [n] markers, dropped orphans) so hallucinated cites never reach the UI; plus search resilience (8s timeout, 2 retries, mock fallback) and 2 Redis cache layers.
 
-– Hardened for production and security: blocked javascript:/data: URL-scheme XSS on every rendered citation/markdown link (enforced client- and server-side), added input/abuse caps (question-length limit + size/type-validated share payloads), and made rate limiting proxy-aware (sliding-window 30/min anon, 120/min authed, keyed on X-Forwarded-For with stale-bucket eviction) alongside optional Bearer/API-key auth; shareable permalinks (POST /api/share → opaque id, 7-day TTL), env-gated and rate-limited /debug, and a per-request OpenTelemetry root span so one trace_id flows back to the UI (Jaeger viewer wired in).
+– Hardened for security: javascript:/data: URL-scheme XSS blocked on every rendered link (client + server), question-length + share-payload caps, and proxy-aware rate limiting (X-Forwarded-For, stale-bucket eviction) with optional API-key auth; shareable permalinks and a per-request OpenTelemetry trace_id surfaced in the UI.
 
-– Deployed end-to-end on free tier with CI/CD: Vercel SPA on a custom domain (GoDaddy CNAME) + Hugging Face Spaces Docker backend + Upstash Redis; GitHub Actions runs 6 pytest suites + frontend lint+build on every push and, on production pushes, auto-deploys the backend to Hugging Face Spaces after tests pass; Playwright smoke E2E in web-agent/e2e/; single-image multi-stage Dockerfile so the same backend runs unchanged on Fly/Cloud Run/Render too.
+– Deployed free-tier with CI/CD: Vercel SPA (custom domain) + Hugging Face Docker backend + Upstash Redis; GitHub Actions runs pytest + lint/build and auto-deploys the backend after tests pass. One multi-stage Dockerfile runs unchanged on Fly/Cloud Run/Render.
 ```
 
 **Optional one-line headline** (profile headline / post opener):
